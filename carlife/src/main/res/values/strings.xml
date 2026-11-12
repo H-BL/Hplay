@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="carlife_host_title">CarLife</string>
+    <string name="carlife_waiting">Waiting for the phone…</string>
+    <string name="carlife_waiting_hint">On the phone, open Baidu CarLife and choose the wireless connection. Both devices must be on the same Wi-Fi network (or the phone joins this head unit\'s hotspot).</string>
+    <string name="carlife_connected">Connected</string>
+    <string name="carlife_disconnected">Phone disconnected, waiting again…</string>
+    <string name="carlife_settings">Settings</string>
+    <string name="carlife_exit">Exit</string>
+    <string name="carlife_preparing">Preparing CarLife…</string>
+    <string name="carlife_open">Open CarLife</string>
+    <string name="carlife_switch">Change protocol</string>
+</resources>

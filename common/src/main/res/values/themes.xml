@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- The host UI draws its own dark chrome; the Material.Light parent is kept
+         only for the framework's default widget styling, so its white window
+         background is overridden here. -->
+    <style name="Theme.Hplay" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/hplay_background</item>
+    </style>
+
+</resources>

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <application>
+        <!-- 自研 CarLife 宿主：UDP 发现 + 7 通道 TCP + 视频上屏，无需外挂引擎。 -->
+        <activity
+            android:name="com.hpplay.carlife.CarlifeHostActivity"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:screenOrientation="fullSensor"
+            android:configChanges="orientation|screenSize|keyboardHidden"
+            android:theme="@style/Theme.Hplay" />
+    </application>
+
+</manifest>

@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- CarLink（ICCOA）车机端：BLE 配网 + WiFi 承载 + 自研协议 + libovmsink.so 视频 -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
+    <uses-permission android:name="android.permission.NEARBY_WIFI_DEVICES" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+    <application>
+        <!-- CarLink 宿主：全屏镜像 SurfaceView + 连接状态/设置入口。 -->
+        <activity
+            android:name="com.hpplay.carlink.CarlinkHostActivity"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:configChanges="density|keyboardHidden|orientation|screenLayout|screenSize|smallestScreenSize|uiMode"
+            android:screenOrientation="fullSensor"
+            android:theme="@style/Theme.Hplay" />
+
+        <!-- 常驻前台服务：钉住进程，保证切到后台后 BLE 广播与热点仍在线。 -->
+        <service
+            android:name="com.hpplay.carlink.CarlinkKeepAliveService"
+            android:exported="false"
+            android:foregroundServiceType="connectedDevice" />
+
+        <!-- P0 验证用 spike（可 adb am start 直接驱动 libovmsink.so，验证后移除）。 -->
+        <activity
+            android:name="com.hpplay.carlink.CarlinkSpikeActivity"
+            android:exported="true"
+            android:configChanges="density|keyboardHidden|orientation|screenLayout|screenSize|smallestScreenSize|uiMode"
+            android:screenOrientation="landscape"
+            android:theme="@android:style/Theme.Material.NoActionBar.Fullscreen" />
+    </application>
+
+</manifest>

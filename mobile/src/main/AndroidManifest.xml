@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- LingFans co-creation desktop: without these entries Android 11+ hides the package and the
+         probe reports "not installed" even when the desktop is present. The package entries cover
+         every component of the desktop; the provider entries cover a renamed applicationId. -->
+    <queries>
+        <package android:name="com.zzh.launcher50s.alpha" />
+        <package android:name="com.zzh.launcher50s" />
+        <provider android:authorities="com.zzh.launcher50s.alpha.cocreate" />
+        <provider android:authorities="com.zzh.launcher50s.cocreate" />
+    </queries>
+
+    <application
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.Hplay">
+
+        <!-- It declares support for Android Auto. -->
+        <meta-data
+            android:name="com.google.android.gms.car.application"
+            android:resource="@xml/automotive_app_desc" />
+    </application>
+
+</manifest>

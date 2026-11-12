@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- CH341: USB VID 0x1A86 / PID 0x5512 / REV 0304 (MFi coprocessor). -->
+    <usb-device vendor-id="6790" product-id="21778" />
+    <!-- Apple, any product. Needed so a plugged-in iPhone wakes this activity: without it the
+         system never delivers USB_DEVICE_ATTACHED for the phone, and wired CarPlay can only be
+         started by hand from the settings menu. Wplay's filter matches Apple by vendor id alone. -->
+    <usb-device vendor-id="1452" />
+</resources>

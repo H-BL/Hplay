@@ -1,0 +1,62 @@
+# Android Studio and local IDE state
+.idea/
+*.iml
+.vscode/
+
+# Gradle and local tooling
+.gradle/
+.kotlin/
+build/
+local.properties
+
+# Native build output
+.cxx/
+.externalNativeBuild/
+captures/
+
+# Local agent working notes
+agent_docs/
+research/
+
+# Only ignore the repo-root tools/ helper dir. Anchor with a leading slash so nested
+# tools/ dirs in third-party sources (e.g. third_party/ffmpeg/tools/Makefile, which the
+# ffmpeg Makefile includes) are NOT ignored — otherwise a fresh CI checkout lacks them.
+/tools/
+mobile/release/
+mobile/debug/
+
+
+# OS files
+.DS_Store
+Thumbs.db
+*.log
+/.idea
+
+# Local reference / test material (not part of the source tree)
+/参考 App/
+/模拟器截图/
+/测试机信息/
+/强制开启 5g 热点/
+/design/
+
+# MFi credentials are supplied per deployment and injected by CI from secrets, never committed.
+# Only the two credential files are ignored; everything else under shared assets (e.g. the
+# non-secret hotspot helper dex) IS committed so a fresh checkout still builds.
+/shared/src/main/assets/offline-mfi/certificate.p7b
+/shared/src/main/assets/offline-mfi/identity.pk8
+
+# Release signing material — machine-local, never commit.
+/keystore.properties
+/keystore/
+
+# Delivered APKs (build artifacts, not source)
+/carairplay-coexist-*.apk
+
+# 统一出包目录（Gradle 每次打包后自动拷入，产物不入库）
+/APK 打包/
+
+# 车机日志下载目录（不入库）
+用户日志/
+
+# 日志中转服务端的本地配置含 token
+tools/logsrv/config.json

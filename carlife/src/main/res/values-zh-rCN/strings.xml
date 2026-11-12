@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="carlife_host_title">CarLife</string>
+    <string name="carlife_waiting">正在等待手机接入…</string>
+    <string name="carlife_waiting_hint">请在手机的「百度 CarLife」里选择无线连接，并让手机与车机处于同一个 Wi-Fi（手机加入车机热点，或双方连同一个路由）。</string>
+    <string name="carlife_connected">已连接</string>
+    <string name="carlife_disconnected">手机已断开，重新等待…</string>
+    <string name="carlife_settings">设置</string>
+    <string name="carlife_exit">退出</string>
+    <string name="carlife_preparing">正在准备 CarLife…</string>
+    <string name="carlife_open">打开 CarLife</string>
+    <string name="carlife_switch">切换协议</string>
+</resources>

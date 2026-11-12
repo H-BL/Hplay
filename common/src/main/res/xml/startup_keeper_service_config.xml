@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Wake-time keepalive hook. The unit usually suspends to RAM when the car is switched off and
+     sends no boot broadcast on the next ignition, so CarPlay never returns to the foreground. This
+     service listens for the screen-on / user-present broadcast and window changes to re-assert
+     CarPlay; it does not read or click any window content. -->
+<accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:accessibilityEventTypes="typeWindowStateChanged"
+    android:accessibilityFeedbackType="feedbackGeneric"
+    android:canRetrieveWindowContent="false"
+    android:description="@string/startup_keeper_service_description"
+    android:notificationTimeout="50" />

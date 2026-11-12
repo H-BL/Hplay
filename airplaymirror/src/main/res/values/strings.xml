@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="notification_channel">AirPlay 镜像服务</string>
+    <string name="notification_title">AirPlay 镜像运行中</string>
+    <string name="notification_text">等待 iPhone 屏幕镜像连接</string>
+    <string name="notification_pin_title">AirPlay 需要 PIN 码</string>
+    <string name="notification_pin_text">PIN: %1$s</string>
+    <string name="overlay_hint">拖动移动 · 双指缩放 · 右上角最小化/关闭</string>
+    <string name="overlay_restore">还原</string>
+    <string name="overlay_minimize">最小化</string>
+    <string name="overlay_close">关闭</string>
+</resources>

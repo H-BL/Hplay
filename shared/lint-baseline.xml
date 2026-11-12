@@ -1,0 +1,786 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<issues format="6" by="lint 9.3.0" type="baseline" client="gradle" dependencies="false" name="AGP (9.3.0)" variant="all" version="9.3.0">
+
+    <issue
+        id="AnnotateVersionCheck"
+        message="This method should be annotated with `@ChecksSdkIntAtLeast(api=android.os.Build.VERSION_CODES.O_MR1)`"
+        errorLine1="    val supportsCarLink: Boolean get() = Build.VERSION.SDK_INT >= 27"
+        errorLine2="        ~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/hpplay/PlatformCapabilities.kt"
+            line="26"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="AnnotateVersionCheck"
+        message="This method should be annotated with `@ChecksSdkIntAtLeast(api=android.os.Build.VERSION_CODES.O_MR1)`"
+        errorLine1="    val supportsAirPlayMirror: Boolean get() = Build.VERSION.SDK_INT >= 27"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/hpplay/PlatformCapabilities.kt"
+            line="29"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="AnnotateVersionCheck"
+        message="This method should be annotated with `@ChecksSdkIntAtLeast(api=Build.VERSION_CODES.Q)`"
+        errorLine1="    val supportsWifiP2p: Boolean get() = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q"
+        errorLine2="        ~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/hpplay/PlatformCapabilities.kt"
+            line="32"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="AnnotateVersionCheck"
+        message="This method should be annotated with `@ChecksSdkIntAtLeast(api=Build.VERSION_CODES.R)`"
+        errorLine1="    val supportsLocalOnlyHotspot5g: Boolean get() = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/hpplay/PlatformCapabilities.kt"
+            line="35"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="InlinedApi"
+        message="Field requires API level 26 (current min is 24): `android.media.AudioAttributes#USAGE_ASSISTANT`"
+        errorLine1="    AudioChannel.ASSISTANT -> AudioAttributes.USAGE_ASSISTANT"
+        errorLine2="                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/hpplay/media/AndroidMediaSink.kt"
+            line="1180"
+            column="31"/>
+    </issue>
+
+    <issue
+        id="InlinedApi"
+        message="Field requires API level 34 (current min is 24): `android.net.wifi.WifiConfiguration.KeyMgmt#WPA2_PSK`"
+        errorLine1="        val wpa2 = keyManagement.get(WifiConfiguration.KeyMgmt.WPA2_PSK)"
+        errorLine2="                                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/hpplay/network/LocalOnlyHotspotManager.kt"
+            line="818"
+            column="38"/>
+    </issue>
+
+    <issue
+        id="InlinedApi"
+        message="Field requires API level 29 (current min is 24): `android.net.wifi.WifiConfiguration.KeyMgmt#SAE`"
+        errorLine1="        val sae = keyManagement.get(WifiConfiguration.KeyMgmt.SAE)"
+        errorLine2="                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/hpplay/network/LocalOnlyHotspotManager.kt"
+            line="819"
+            column="37"/>
+    </issue>
+
+    <issue
+        id="InlinedApi"
+        message="Field requires API level 29 (current min is 24): `android.net.wifi.WifiConfiguration.KeyMgmt#OWE`"
+        errorLine1="        val owe = keyManagement.get(WifiConfiguration.KeyMgmt.OWE)"
+        errorLine2="                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/hpplay/network/LocalOnlyHotspotManager.kt"
+            line="820"
+            column="37"/>
+    </issue>
+
+    <issue
+        id="InlinedApi"
+        message="Field requires API level 34 (current min is 24): `android.net.wifi.WifiConfiguration.KeyMgmt#WPA2_PSK`"
+        errorLine1="        val wpa2 = keyManagement.get(WifiConfiguration.KeyMgmt.WPA2_PSK)"
+        errorLine2="                                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/hpplay/network/ManualHotspotManager.kt"
+            line="388"
+            column="38"/>
+    </issue>
+
+    <issue
+        id="InlinedApi"
+        message="Field requires API level 29 (current min is 24): `android.net.wifi.WifiConfiguration.KeyMgmt#SAE`"
+        errorLine1="        val sae = keyManagement.get(WifiConfiguration.KeyMgmt.SAE)"
+        errorLine2="                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/hpplay/network/ManualHotspotManager.kt"
+            line="389"
+            column="37"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 26 (current min is 24): `android.media.AudioManager#abandonAudioFocusRequest`"
+        errorLine1="            runCatching { manager.abandonAudioFocusRequest(pending) }"
+        errorLine2="                                  ~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/hpplay/media/AndroidMediaSink.kt"
+            line="1266"
+            column="35"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 26 (current min is 24): `android.media.AudioFocusRequest.Builder()`"
+        errorLine1="        AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)"
+        errorLine2="                          ~~~~~~~">
+        <location
+            file="src/main/java/com/hpplay/media/AndroidMediaSink.kt"
+            line="1274"
+            column="27"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 26 (current min is 24): `android.media.AudioFocusRequest.Builder#setAudioAttributes`"
+        errorLine1="            .setAudioAttributes(attributes)"
+        errorLine2="             ~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/hpplay/media/AndroidMediaSink.kt"
+            line="1275"
+            column="14"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 26 (current min is 24): `android.media.AudioFocusRequest.Builder#setOnAudioFocusChangeListener`"
+        errorLine1="            .setOnAudioFocusChangeListener(listener, mainHandler)"
+        errorLine2="             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/hpplay/media/AndroidMediaSink.kt"
+            line="1276"
+            column="14"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 26 (current min is 24): `android.media.AudioFocusRequest.Builder#setWillPauseWhenDucked`"
+        errorLine1="            .setWillPauseWhenDucked(false)"
+        errorLine2="             ~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/hpplay/media/AndroidMediaSink.kt"
+            line="1279"
+            column="14"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 26 (current min is 24): `android.media.AudioFocusRequest.Builder#build`"
+        errorLine1="            .build()"
+        errorLine2="             ~~~~~">
+        <location
+            file="src/main/java/com/hpplay/media/AndroidMediaSink.kt"
+            line="1280"
+            column="14"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 26 (current min is 24): `android.media.AudioManager#requestAudioFocus`"
+        errorLine1="        val result = runCatching { manager.requestAudioFocus(request) }"
+        errorLine2="                                           ~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/hpplay/media/AndroidMediaSink.kt"
+            line="1285"
+            column="44"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 31 (current min is 24): `android.media.AudioManager#getAvailableCommunicationDevices`"
+        errorLine1="                val speaker = manager.availableCommunicationDevices"
+        errorLine2="                                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/hpplay/media/CallSpeaker.kt"
+            line="22"
+            column="39"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 31 (current min is 24): `android.media.AudioManager#setCommunicationDevice`"
+        errorLine1="                if (!manager.setCommunicationDevice(speaker)) return null"
+        errorLine2="                             ~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/hpplay/media/CallSpeaker.kt"
+            line="24"
+            column="30"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 31 (current min is 24): `android.media.AudioManager#clearCommunicationDevice`"
+        errorLine1="                CallSpeaker { manager.clearCommunicationDevice() }"
+        errorLine2="                                      ~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/hpplay/media/CallSpeaker.kt"
+            line="25"
+            column="39"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 26 (current min is 24): `android.hardware.usb.UsbRequest#queue`"
+        errorLine1="            if (!request.queue(buffer)) {"
+        errorLine2="                         ~~~~~">
+        <location
+            file="src/main/java/com/hpplay/transport/IphoneUsbHost.kt"
+            line="366"
+            column="26"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 26 (current min is 24): `android.hardware.usb.UsbDeviceConnection#requestWait`"
+        errorLine1="                connection.requestWait(timeoutMillis)"
+        errorLine2="                           ~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/hpplay/transport/IphoneUsbHost.kt"
+            line="370"
+            column="28"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 26 (current min is 24): `android.hardware.usb.UsbDeviceConnection#requestWait`"
+        errorLine1="            connection.requestWait(CANCEL_DRAIN_TIMEOUT_MILLIS)"
+        errorLine2="                       ~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/hpplay/transport/IphoneUsbHost.kt"
+            line="422"
+            column="24"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 26 (current min is 24): `android.net.wifi.WifiManager.LocalOnlyHotspotReservation#close`"
+        errorLine1="            reservation.close()"
+        errorLine2="                        ~~~~~">
+        <location
+            file="src/main/java/com/hpplay/network/LocalOnlyHotspotManager.kt"
+            line="193"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 26 (current min is 24): `android.net.wifi.WifiManager.LocalOnlyHotspotCallback()`"
+        errorLine1="        object : WifiManager.LocalOnlyHotspotCallback() {"
+        errorLine2="                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/hpplay/network/LocalOnlyHotspotManager.kt"
+            line="352"
+            column="18"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Class requires API level 26 (current min is 24): `android.net.wifi.WifiManager.LocalOnlyHotspotCallback`"
+        errorLine1="        object : WifiManager.LocalOnlyHotspotCallback() {"
+        errorLine2="                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/hpplay/network/LocalOnlyHotspotManager.kt"
+            line="352"
+            column="18"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 26 (current min is 24): `android.net.wifi.WifiManager.LocalOnlyHotspotReservation#close`"
+        errorLine1="                if (releaseImmediately) reservation.close()"
+        errorLine2="                                                    ~~~~~">
+        <location
+            file="src/main/java/com/hpplay/network/LocalOnlyHotspotManager.kt"
+            line="370"
+            column="53"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 26 (current min is 24): `android.net.wifi.WifiManager.LocalOnlyHotspotReservation#getWifiConfiguration`"
+        errorLine1="            val configuration = reservation.wifiConfiguration"
+        errorLine2="                                            ~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/hpplay/network/LocalOnlyHotspotManager.kt"
+            line="446"
+            column="45"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 28 (current min is 24): `android.net.MacAddress#fromString`"
+        errorLine1="                MacAddress.fromString(it)"
+        errorLine2="                           ~~~~~~~~~~">
+        <location
+            file="src/main/java/com/hpplay/network/LocalOnlyHotspotManager.kt"
+            line="483"
+            column="28"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 28 (current min is 24): `android.net.MacAddress#toByteArray`"
+        errorLine1="            bssidBytes = bssid?.toByteArray(),"
+        errorLine2="                                ~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/hpplay/network/LocalOnlyHotspotManager.kt"
+            line="496"
+            column="33"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 26 (current min is 24): `android.net.wifi.WifiManager.LocalOnlyHotspotReservation#close`"
+        errorLine1="                stale.close()"
+        errorLine2="                      ~~~~~">
+        <location
+            file="src/main/java/com/hpplay/network/LocalOnlyHotspotManager.kt"
+            line="746"
+            column="23"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 26, or core library desugaring (current min is 24): `java.util.Base64#getDecoder`"
+        errorLine1="        val der = Base64.getDecoder().decode(encoded)"
+        errorLine2="                         ~~~~~~~~~~">
+        <location
+            file="src/main/java/com/hpplay/transport/LockdownPairRecord.kt"
+            line="302"
+            column="26"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 26, or core library desugaring (current min is 24): `java.util.Base64.Decoder#decode`"
+        errorLine1="        val der = Base64.getDecoder().decode(encoded)"
+        errorLine2="                                      ~~~~~~">
+        <location
+            file="src/main/java/com/hpplay/transport/LockdownPairRecord.kt"
+            line="302"
+            column="39"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 26, or core library desugaring (current min is 24): `java.util.Base64#getMimeEncoder`"
+        errorLine1="        val encoded = Base64.getMimeEncoder(64, byteArrayOf(&apos;\n&apos;.code.toByte())).encodeToString(der)"
+        errorLine2="                             ~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/hpplay/transport/LockdownPairRecord.kt"
+            line="320"
+            column="30"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 26, or core library desugaring (current min is 24): `java.util.Base64.Encoder#encodeToString`"
+        errorLine1="        val encoded = Base64.getMimeEncoder(64, byteArrayOf(&apos;\n&apos;.code.toByte())).encodeToString(der)"
+        errorLine2="                                                                                 ~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/hpplay/transport/LockdownPairRecord.kt"
+            line="320"
+            column="82"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 26, or core library desugaring (current min is 24): `java.util.Base64#getDecoder`"
+        errorLine1="                    LockdownPlistValue.Data(Base64.getDecoder().decode(encoded))"
+        errorLine2="                                                   ~~~~~~~~~~">
+        <location
+            file="src/main/java/com/hpplay/transport/LockdownPlistChannel.kt"
+            line="218"
+            column="52"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 26, or core library desugaring (current min is 24): `java.util.Base64.Decoder#decode`"
+        errorLine1="                    LockdownPlistValue.Data(Base64.getDecoder().decode(encoded))"
+        errorLine2="                                                                ~~~~~~">
+        <location
+            file="src/main/java/com/hpplay/transport/LockdownPlistChannel.kt"
+            line="218"
+            column="65"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 26, or core library desugaring (current min is 24): `java.util.Base64#getEncoder`"
+        errorLine1="                .append(Base64.getEncoder().encodeToString(value.bytes))"
+        errorLine2="                               ~~~~~~~~~~">
+        <location
+            file="src/main/java/com/hpplay/transport/LockdownPlistChannel.kt"
+            line="253"
+            column="32"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 26, or core library desugaring (current min is 24): `java.util.Base64.Encoder#encodeToString`"
+        errorLine1="                .append(Base64.getEncoder().encodeToString(value.bytes))"
+        errorLine2="                                            ~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/hpplay/transport/LockdownPlistChannel.kt"
+            line="253"
+            column="45"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 26, or core library desugaring (current min is 24): `java.util.Base64#getMimeDecoder`"
+        errorLine1="            Base64.getMimeDecoder().decode(encoded)"
+        errorLine2="                   ~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/hpplay/transport/LockdownTlsEngineFactory.kt"
+            line="67"
+            column="20"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 26, or core library desugaring (current min is 24): `java.util.Base64.Decoder#decode`"
+        errorLine1="            Base64.getMimeDecoder().decode(encoded)"
+        errorLine2="                                    ~~~~~~">
+        <location
+            file="src/main/java/com/hpplay/transport/LockdownTlsEngineFactory.kt"
+            line="67"
+            column="37"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 26, or core library desugaring (current min is 24): `java.util.Base64#getEncoder`"
+        errorLine1="        val encodedChallenge = Base64.getEncoder().encodeToString(challenge.copyOf())"
+        errorLine2="                                      ~~~~~~~~~~">
+        <location
+            file="src/main/java/com/hpplay/mfi/RemoteMfiAuthenticationClient.kt"
+            line="95"
+            column="39"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 26, or core library desugaring (current min is 24): `java.util.Base64.Encoder#encodeToString`"
+        errorLine1="        val encodedChallenge = Base64.getEncoder().encodeToString(challenge.copyOf())"
+        errorLine2="                                                   ~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/hpplay/mfi/RemoteMfiAuthenticationClient.kt"
+            line="95"
+            column="52"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 26, or core library desugaring (current min is 24): `java.util.Base64#getDecoder`"
+        errorLine1="        Base64.getDecoder().decode(encoded)"
+        errorLine2="               ~~~~~~~~~~">
+        <location
+            file="src/main/java/com/hpplay/mfi/RemoteMfiAuthenticationClient.kt"
+            line="258"
+            column="16"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 26, or core library desugaring (current min is 24): `java.util.Base64.Decoder#decode`"
+        errorLine1="        Base64.getDecoder().decode(encoded)"
+        errorLine2="                            ~~~~~~">
+        <location
+            file="src/main/java/com/hpplay/mfi/RemoteMfiAuthenticationClient.kt"
+            line="258"
+            column="29"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 26, or core library desugaring (current min is 24): `java.util.Base64#getEncoder`"
+        errorLine1="        return Base64.getEncoder().encodeToString(littleEndian)"
+        errorLine2="                      ~~~~~~~~~~">
+        <location
+            file="src/main/java/com/hpplay/airplay/VideoInCar.kt"
+            line="114"
+            column="23"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 26, or core library desugaring (current min is 24): `java.util.Base64.Encoder#encodeToString`"
+        errorLine1="        return Base64.getEncoder().encodeToString(littleEndian)"
+        errorLine2="                                   ~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/hpplay/airplay/VideoInCar.kt"
+            line="114"
+            column="36"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 26 (current min is 24): `java.lang.Process#waitFor`"
+        errorLine1="        if (!process.waitFor(COMMAND_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {"
+        errorLine2="                     ~~~~~~~">
+        <location
+            file="src/main/java/com/hpplay/network/WirelessAdbEnabler.kt"
+            line="135"
+            column="22"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 26 (current min is 24): `java.lang.Process#destroyForcibly`"
+        errorLine1="            process.destroyForcibly()"
+        errorLine2="                    ~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/hpplay/network/WirelessAdbEnabler.kt"
+            line="136"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="PrivateApi"
+        message="Accessing internal APIs via reflection is not supported and may not work on all devices or in the future"
+        errorLine1="                val callbackClass = Class.forName(&quot;android.net.wifi.WifiManager\$SoftApCallback&quot;)"
+        errorLine2="                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/hpplay/network/SoftApChannelReader.kt"
+            line="119"
+            column="37"/>
+    </issue>
+
+    <issue
+        id="PrivateApi"
+        message="Accessing internal APIs via reflection is not supported and may not work on all devices or in the future"
+        errorLine1="        val serviceManager = Class.forName(&quot;android.os.ServiceManager&quot;)"
+        errorLine2="                             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/hpplay/network/TetheringController.kt"
+            line="220"
+            column="30"/>
+    </issue>
+
+    <issue
+        id="UnusedAttribute"
+        message="Attribute `usesPermissionFlags` is only used in API level 31 and higher (current min is 24)"
+        errorLine1="        android:usesPermissionFlags=&quot;neverForLocation&quot; />"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/AndroidManifest.xml"
+            line="16"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="UnspecifiedRegisterReceiverFlag"
+        message="`receiver` is missing `RECEIVER_EXPORTED` or `RECEIVER_NOT_EXPORTED` flag for unprotected broadcasts registered for an IntentFilter that cannot be inspected by lint"
+        errorLine1="            appContext.registerReceiver(receiver, filter)"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/hpplay/transport/IphoneUsbHost.kt"
+            line="296"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="SwitchIntDef"
+        message="Switch statement on an `int` with known associated constant missing case `Player.COMMAND_ADJUST_DEVICE_VOLUME`, `Player.COMMAND_ADJUST_DEVICE_VOLUME_WITH_FLAGS`, `Player.COMMAND_CHANGE_MEDIA_ITEMS`, `Player.COMMAND_GET_AUDIO_ATTRIBUTES`, `Player.COMMAND_GET_CURRENT_MEDIA_ITEM`, `Player.COMMAND_GET_DEVICE_VOLUME`, `Player.COMMAND_GET_MEDIA_ITEMS_METADATA`, `Player.COMMAND_GET_METADATA`, `Player.COMMAND_GET_TEXT`, `Player.COMMAND_GET_TIMELINE`, `Player.COMMAND_GET_TRACKS`, `Player.COMMAND_GET_VOLUME`, `Player.COMMAND_INVALID`, `Player.COMMAND_PLAY_PAUSE`, `Player.COMMAND_PREPARE`, `Player.COMMAND_RELEASE`, `Player.COMMAND_SEEK_BACK`, `Player.COMMAND_SEEK_FORWARD`, `Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM`, `Player.COMMAND_SEEK_TO_DEFAULT_POSITION`, `Player.COMMAND_SEEK_TO_MEDIA_ITEM`, `Player.COMMAND_SET_AUDIO_ATTRIBUTES`, `Player.COMMAND_SET_DEVICE_VOLUME`, `Player.COMMAND_SET_DEVICE_VOLUME_WITH_FLAGS`, `Player.COMMAND_SET_MEDIA_ITEM`, `Player.COMMAND_SET_MEDIA_ITEMS_METADATA`, `Player.COMMAND_SET_PLAYLIST_METADATA`, `Player.COMMAND_SET_REPEAT_MODE`, `Player.COMMAND_SET_SHUFFLE_MODE`, `Player.COMMAND_SET_SPEED_AND_PITCH`, `Player.COMMAND_SET_TRACK_SELECTION_PARAMETERS`, `Player.COMMAND_SET_VIDEO_SURFACE`, `Player.COMMAND_SET_VOLUME`, `Player.COMMAND_STOP`"
+        errorLine1="        when (seekCommand) {"
+        errorLine2="        ~~~~">
+        <location
+            file="src/main/java/com/hpplay/media/CarPlayMediaSessionService.kt"
+            line="236"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="HardwareIds"
+        message="Using `getAddress` to get device identifiers is not recommended"
+        errorLine1="            adapter.address"
+        errorLine2="            ~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/hpplay/orchestration/CarPlayController.kt"
+            line="1938"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="ExportedService"
+        message="Exported service does not require permission"
+        errorLine1="        &lt;service"
+        errorLine2="         ~~~~~~~">
+        <location
+            file="src/main/AndroidManifest.xml"
+            line="38"
+            column="10"/>
+    </issue>
+
+    <issue
+        id="ExportedService"
+        message="Exported service does not require permission"
+        errorLine1="        &lt;service"
+        errorLine2="         ~~~~~~~">
+        <location
+            file="src/main/AndroidManifest.xml"
+            line="53"
+            column="10"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; `Build.VERSION.SDK_INT &lt; Build.VERSION_CODES.TIRAMISU` is never true here"
+        errorLine1="            if (Build.VERSION.SDK_INT &lt; Build.VERSION_CODES.TIRAMISU) return null"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/hpplay/network/SoftApChannelReader.kt"
+            line="117"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="IconDuplicates"
+        message="The following unrelated icon files have identical contents: ic_launcher.webp, ic_launcher_round.webp">
+        <location
+            file="src/main/res/mipmap-hdpi/ic_launcher_round.webp"/>
+        <location
+            file="src/main/res/mipmap-hdpi/ic_launcher.webp"/>
+    </issue>
+
+    <issue
+        id="IconDuplicates"
+        message="The following unrelated icon files have identical contents: ic_launcher.webp, ic_launcher_round.webp">
+        <location
+            file="src/main/res/mipmap-mdpi/ic_launcher_round.webp"/>
+        <location
+            file="src/main/res/mipmap-mdpi/ic_launcher.webp"/>
+    </issue>
+
+    <issue
+        id="IconDuplicates"
+        message="The following unrelated icon files have identical contents: ic_launcher.webp, ic_launcher_round.webp">
+        <location
+            file="src/main/res/mipmap-xhdpi/ic_launcher_round.webp"/>
+        <location
+            file="src/main/res/mipmap-xhdpi/ic_launcher.webp"/>
+    </issue>
+
+    <issue
+        id="IconDuplicates"
+        message="The following unrelated icon files have identical contents: ic_launcher.webp, ic_launcher_round.webp">
+        <location
+            file="src/main/res/mipmap-xxhdpi/ic_launcher_round.webp"/>
+        <location
+            file="src/main/res/mipmap-xxhdpi/ic_launcher.webp"/>
+    </issue>
+
+    <issue
+        id="IconDuplicates"
+        message="The following unrelated icon files have identical contents: ic_launcher.webp, ic_launcher_round.webp">
+        <location
+            file="src/main/res/mipmap-xxxhdpi/ic_launcher_round.webp"/>
+        <location
+            file="src/main/res/mipmap-xxxhdpi/ic_launcher.webp"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toUri` instead?"
+        errorLine1="                val certificateUri = Uri.parse(checkNotNull(config.localMfiCertificateUri))"
+        errorLine2="                                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/hpplay/orchestration/CarPlayController.kt"
+            line="601"
+            column="38"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toUri` instead?"
+        errorLine1="                val privateKeyUri = Uri.parse(checkNotNull(config.localMfiPrivateKeyUri))"
+        errorLine2="                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/hpplay/orchestration/CarPlayController.kt"
+            line="602"
+            column="37"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        set(value) { prefs.edit().putBoolean(KEY_STA_DISABLED, value).apply() }"
+        errorLine2="                     ~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/hpplay/network/ForceFiveGhzHotspotManager.kt"
+            line="83"
+            column="22"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        set(value) { prefs.edit().putBoolean(KEY_WIFI_OWNER_SUPPRESSED, value).apply() }"
+        errorLine2="                     ~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/hpplay/network/ForceFiveGhzHotspotManager.kt"
+            line="88"
+            column="22"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="                prefs.edit().putString(KEY_SSID_SEED, it).apply()"
+        errorLine2="                ~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/hpplay/network/ForceFiveGhzHotspotManager.kt"
+            line="297"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension property `SparseIntArray.size` instead?"
+        errorLine1="        if (channels.size() != 1) {"
+        errorLine2="            ~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/hpplay/network/LocalOnlyHotspotManager.kt"
+            line="504"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension property `SparseIntArray.size` instead?"
+        errorLine1="            throw IOException(&quot;Expected one LocalOnlyHotspot channel, got ${channels.size()}&quot;)"
+        errorLine2="                                                                            ~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/hpplay/network/LocalOnlyHotspotManager.kt"
+            line="505"
+            column="77"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SparseIntArray.isEmpty` instead?"
+        errorLine1="                    if (channels.size() == 0) null else channels.keyAt(0) to channels.valueAt(0)"
+        errorLine2="                        ~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/hpplay/network/ManualHotspotManager.kt"
+            line="317"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SparseIntArray.isNotEmpty` instead?"
+        errorLine1="            if (channels != null &amp;&amp; channels.size() > 0) {"
+        errorLine2="                                    ~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/hpplay/network/SoftApChannelReader.kt"
+            line="99"
+            column="37"/>
+    </issue>
+
+</issues>

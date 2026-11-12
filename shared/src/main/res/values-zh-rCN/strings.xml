@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 投影车机（Android Auto / AAOS）界面的中文文案。 -->
+<resources>
+    <string name="car_app_title">Hplay 硬件状态</string>
+    <string name="car_app_transport_missing">硬件传输方式未配置。板载 I2C 需要 /dev/i2c-N 路径以及系统/SELinux 权限；CH341 需要按部署环境配置 VID/PID。</string>
+</resources>

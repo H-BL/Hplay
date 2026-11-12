@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Hplay brand mark (white "C" with play arrow), traced from the launcher
+  foreground asset. Two subpaths with opposite winding so the default nonZero
+  fill rule punches the counter out of the ring.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="193dp"
+    android:height="218dp"
+    android:viewportWidth="193"
+    android:viewportHeight="218">
+    <path
+        android:fillColor="#F2FFFFFF"
+        android:pathData="M64,63L63,69L71,95L73,114L72,115L72,122L68,135L62,147L57,154L61,154L75,150L95,140L110,136L132,136L145,139L162,146L160,133L152,114L145,103L130,87L109,72L91,64L76,60L69,60Z" />
+    <path
+        android:fillColor="#F2FFFFFF"
+        android:pathData="M95,0L94,1L87,1L78,3L56,12L41,22L24,39L15,52L5,74L0,98L0,118L1,119L3,135L8,150L15,164L24,177L37,191L50,201L70,211L89,216L107,217L108,216L118,216L137,212L151,207L163,201L175,193L187,182L191,176L190,168L185,164L179,164L165,177L148,188L129,195L120,197L114,197L113,198L88,197L75,193L63,187L52,179L40,167L32,156L22,134L19,121L18,107L19,106L20,90L27,69L32,60L41,48L55,35L74,24L92,19L117,19L138,24L156,33L165,40L175,51L181,54L186,53L190,50L191,41L186,34L174,23L164,16L148,8L140,5L122,1Z" />
+</vector>

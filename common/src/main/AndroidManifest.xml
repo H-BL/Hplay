@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+    <!-- 「哨了个兵」(com.ccffee.shaolegebing) protects its PUBLIC_STATE_CHANGED broadcast with this
+         normal-level permission; without it the system skips delivery to our receiver entirely. -->
+    <uses-permission android:name="com.ccffee.shaolegebing.permission.READ_PUBLIC_STATE" />
+
+    <!--
+        This module targets Android 7.0 (API 24) for ordinary head units, but depends on
+        :airplaymirror which is compiled at API 28 (its UxPlay/OpenSSL/ffmpeg native stack is not
+        rebuilt for 24). Override the library manifest check; the mirror feature itself is
+        runtime-gated to Android 8.1+ (see PlatformCapabilities.supportsAirPlayMirror) and is never
+        loaded below that.
+    -->
+    <uses-sdk tools:overrideLibrary="com.hpplay.mirror" />
+
+    <application>
+
+        <!-- Single launcher entry point. Shows the first-run protocol picker, then forwards to the
+             activity for the chosen protocol (CarPlay or CarLife). -->
+        <activity
+            android:name="com.hpplay.RouterActivity"
+            android:exported="true"
+            android:theme="@style/Theme.Hplay">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- First launch only: licence + disclaimer, shown before anything actionable. -->
+        <activity
+            android:name="com.hpplay.ConsentActivity"
+            android:exported="false"
+            android:screenOrientation="fullSensor"
+            android:theme="@style/Theme.Hplay" />
+
+        <!-- First-run only: pick CarPlay or CarLife. -->
+        <activity
+            android:name="com.hpplay.ProtocolPickerActivity"
+            android:exported="false"
+            android:screenOrientation="fullSensor"
+            android:theme="@style/Theme.Hplay" />
+
+        <!-- Launch pad when CarLife is served by an external engine (open CarLife / change protocol). -->
+        <activity
+            android:name="com.hpplay.ProtocolHomeActivity"
+            android:exported="false"
+            android:screenOrientation="fullSensor"
+            android:theme="@style/Theme.Hplay" />
+
+        <activity
+            android:name="com.hpplay.CarPlayHostActivity"
+            android:configChanges="density|keyboardHidden|orientation|screenLayout|screenSize|smallestScreenSize|uiMode"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:resizeableActivity="true"
+            android:screenOrientation="fullSensor"
+            android:theme="@style/Theme.Hplay"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED" />
+            </intent-filter>
+            <meta-data
+                android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED"
+                android:resource="@xml/usb_device_filter" />
+        </activity>
+
+        <activity
+            android:name="com.hpplay.ImageCropActivity"
+            android:exported="false"
+            android:screenOrientation="fullSensor"
+            android:theme="@style/Theme.Hplay" />
+
+        <!-- Auto-confirms the system USB-permission dialog so a plugged-in iPhone does not stall
+             on a prompt the user cannot reach from the CarPlay screen. Ported from Wplay. -->
+        <service
+            android:name="com.hpplay.UsbAutoConfirmService"
+            android:exported="true"
+            android:label="@string/usb_auto_confirm_service_label"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/usb_auto_confirm_service_config" />
+        </service>
+
+        <!--
+             Wake-from-sleep keepalive. When the car is switched off this unit usually suspends to
+             RAM instead of powering down, and the next ignition sends no boot broadcast at all, so
+             BootReceiver never fires and CarPlay stays in the background. This accessibility service
+             is a component the system keeps alive across the suspend and is one of the few things it
+             re-delivers events to on resume; it uses the screen-on / launcher-foreground events to
+             bring CarPlay back (see StartupKeeperService). It only reads screen state, not content.
+        -->
+        <service
+            android:name="com.hpplay.StartupKeeperService"
+            android:exported="true"
+            android:label="@string/startup_keeper_service_label"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/startup_keeper_service_config" />
+        </service>
+
+        <!--
+             Boot auto-start. This head unit is an MTK IPO (quick-boot) unit: a normal ignition
+             resumes from a frozen RAM image and announces readiness with vendor broadcasts instead
+             of the standard BOOT_COMPLETED, so every stock app listens for the whole family. We do
+             the same, otherwise the car sometimes boots to its own launcher and CarPlay never
+             starts. BootReceiver dedupes the burst down to one launch.
+        -->
+        <receiver
+            android:name="com.hpplay.BootReceiver"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+                <action android:name="android.intent.action.ACTION_BOOT_HU" />
+                <action android:name="android.intent.action.ACTION_BOOT_IPO" />
+            </intent-filter>
+        </receiver>
+    </application>
+
+</manifest>

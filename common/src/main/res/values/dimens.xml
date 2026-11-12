@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- Spacing scale -->
+    <dimen name="space_m">12dp</dimen>
+
+    <!-- Controls -->
+    <dimen name="settings_button_min_height">52dp</dimen>
+    <dimen name="settings_input_min_height">48dp</dimen>
+    <dimen name="settings_icon_button_size">48dp</dimen>
+    <dimen name="settings_divider_height">1dp</dimen>
+
+    <!-- Settings panel layout -->
+    <dimen name="settings_nav_width">260dp</dimen>
+    <dimen name="settings_content_padding_h">24dp</dimen>
+    <dimen name="settings_content_padding_v">20dp</dimen>
+
+</resources>

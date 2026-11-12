@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- Window background for the host UI. Kept in step with
+         NO_VIDEO_BACKGROUND in CarPlayHostActivity so the window never flashes
+         the light Material theme's white before the first frame is drawn. -->
+    <color name="hplay_background">#161618</color>
+
+</resources>

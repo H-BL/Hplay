@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Hplay brand mark: the "orange" from design/05-hybrid-adaptive.html.
+  Geometry is a 1:1 port of the design SVG (viewBox 0 0 100 100):
+    radial gradient circle + soft highlight + green leaf + brown stem.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="96dp"
+    android:height="96dp"
+    android:viewportWidth="100"
+    android:viewportHeight="100">
+    <!-- fruit body -->
+    <path android:pathData="M50,57 m-35,0 a35,35 0 1,0 70,0 a35,35 0 1,0 -70,0">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="radial"
+                android:centerX="40"
+                android:centerY="43"
+                android:gradientRadius="53"
+                android:startColor="#FFC46B"
+                android:centerColor="#FF8A1E"
+                android:endColor="#F06400" />
+        </aapt:attr>
+    </path>
+    <!-- highlight -->
+    <path
+        android:fillColor="#52FFFFFF"
+        android:pathData="M25,44 a13,9 0 1,0 26,0 a13,9 0 1,0 -26,0" />
+    <!-- leaf -->
+    <path
+        android:fillColor="#43B94F"
+        android:pathData="M50,24c-4-9-16-13-24-10 3 9 14 15 24 12z" />
+    <!-- stem -->
+    <path
+        android:fillColor="#7A4A22"
+        android:pathData="M48.5,16 a2,2 0 0 1 4,0 v8 a2,2 0 0 1 -4,0 z" />
+</vector>

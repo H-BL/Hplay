@@ -1,0 +1,1695 @@
+package com.hpplay.rail
+
+import android.app.AlertDialog
+import android.content.Context
+import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
+import android.os.Handler
+import android.os.Looper
+import android.text.TextUtils
+import android.view.Gravity
+import android.view.View
+import android.view.ViewGroup
+import android.view.ViewGroup.LayoutParams.MATCH_PARENT
+import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+import android.widget.FrameLayout
+import android.widget.ImageView
+import android.widget.LinearLayout
+import android.widget.PopupWindow
+import android.widget.Space
+import android.widget.TextView
+import com.hpplay.SettingsPalette
+import com.hpplay.host.R
+import com.hpplay.lingfans.LingFansClient
+import com.hpplay.lingfans.LingFansReading
+import java.util.Locale
+import java.util.concurrent.Executors
+
+/**
+ * The edge band from the dock design: a full-bleed strip on the chosen edge that reserves its own
+ * space (the projected picture is inset, never covered). Status chips sit on one side, quick
+ * controls on the other, and an expand panel holds the full car controls.
+ *
+ * Every value renders together with its `status`: a reading that is not `ok`/`stale` shows `--`
+ * instead of a made-up zero, and controls are disabled while the car is moving.
+ */
+class StatusRailView(
+    context: Context,
+    @Suppress("UNUSED_PARAMETER") palette: SettingsPalette,
+    private val edge: StatusRailEdge,
+    private val contentScale: Float = 1f,
+    private val slim: Boolean = false,
+) : LinearLayout(context) {
+
+    private companion object {
+        /** 上一次成功读取到的车辆数据，进程内共享：新建状态条时先画它，避免首帧出现占位样式。 */
+        @Volatile
+        var cachedReadings: Map<String, LingFansReading> = emptyMap()
+
+        @Volatile
+        var cachedSentry: Boolean? = null
+
+        // Semantic colours share both themes; surfaces/text come from the instance palette.
+        const val AMBER_C = 0xFFFFB454.toInt()
+        const val AMBER = 0xFFFFB454.toInt()
+        const val GREEN = 0xFF3DDC97.toInt()
+        const val RED = 0xFFFF6B5E.toInt()
+        const val REFRESH_MS = 1000L
+
+        val DRIVE_MODES = listOf(
+            "standard" to "标准",
+            "economy" to "经济",
+            "sport" to "运动",
+            "economyPlus" to "经济+",
+        )
+        val SCENE_MODES = listOf("off" to "关闭", "rest" to "休息", "camp" to "露营")
+
+        val KEYS = listOf(
+            "battery.soc", "battery.availableEnergy", "battery.power",
+            "charging.active", "charging.stateName", "charging.remainingMinutes",
+            "vehicle.gearName", "vehicle.parking", "vehicle.speed", "vehicle.remainingRange",
+            "location.speed", "display.nightMode",
+            "body.doorsOpen", "body.doorSummary",
+            "body.door.driver", "body.door.passenger", "body.door.rearLeft",
+            "body.door.rearRight", "body.door.tailgate",
+            "drive.modeName", "drive.modeCode",
+            "scene.stateName", "scene.modeCode", "scene.active",
+            "hvac.power", "hvac.temperature", "hvac.fanSpeed", "hvac.ac", "hvac.auto", "hvac.recirculation",
+            "light.fog",
+            "seat.driver.heat", "seat.passenger.heat", "seat.rearLeft.heat", "seat.rearRight.heat",
+            "seat.driver.vent", "seat.passenger.vent",
+            "trip.distance", "system.temperatureCelsius", "media.title",
+        )
+    }
+
+    private val horizontal = StatusRailSettings.isHorizontal(edge)
+    private val main = Handler(Looper.getMainLooper())
+    private val worker = Executors.newSingleThreadExecutor { r -> Thread(r, "status-band").apply { isDaemon = true } }
+
+    private val components = StatusRailSettings.loadComponents(context)
+    private val order = StatusRailSettings.loadOrder(context)
+
+    private val style = StatusRailSettings.loadBandStyle(context)
+    /** DAY/NIGHT force the surface; FOLLOW resolves from `display.nightMode` each poll. */
+    private val forcedNight: Boolean? = when (StatusRailSettings.loadThemeMode(context)) {
+        ThemeMode.DAY -> false
+        ThemeMode.NIGHT -> true
+        ThemeMode.FOLLOW -> null
+    }
+    private var nightNow: Boolean = forcedNight ?: palette.dark
+    private val nightBand: Boolean get() = nightNow
+    private val initialNight = when (style) {
+        BandStyle.LIGHT -> false
+        BandStyle.DARK -> true
+        BandStyle.BLUE -> true
+        BandStyle.GREEN -> true
+        BandStyle.AUTO -> palette.dark
+    }
+    private var cBandTop: Int = 0
+    private var cBandBottom: Int = 0
+    private var cText: Int = 0
+    private var cDim: Int = 0
+    private var cLine: Int = 0
+    private var cAccent: Int = 0
+    private var cAccent2: Int = 0
+    /** Icon/text colour that sits on top of the active gradient fill (dark, for contrast). */
+    private val cOnIcon: Int = 0xFF071018.toInt()
+    private var cPanelTop: Int = 0xFF1A2230.toInt()
+    private var cPanelBottom: Int = 0xFF0D121B.toInt()
+    private var cPanelStroke: Int = 0x33FFFFFF
+    private var cChipBg: Int = 0x12FFFFFF
+    private var cHairline: Int = 0x24FFFFFF
+
+    init {
+        resolvePalette()
+    }
+
+    /** Recomputes every surface colour; called once and again whenever day/night flips. */
+    private fun resolvePalette() {
+        val night = when (style) {
+            BandStyle.LIGHT -> false
+            BandStyle.DARK -> true
+            BandStyle.BLUE -> true
+            BandStyle.GREEN -> true
+            BandStyle.AUTO -> nightNow
+        }
+        nightNow = night
+        when {
+            style == BandStyle.LIGHT || (style == BandStyle.AUTO && !night) -> {
+                cBandTop = 0xF7FAFBFE.toInt(); cBandBottom = 0xF0EDF1F6.toInt()
+                cText = 0xFF1B2430.toInt(); cDim = 0xFF6B7686.toInt()
+                cLine = 0x1F000000; cAccent = 0xFF0B8F7E.toInt(); cAccent2 = 0xFF0A7BD4.toInt()
+                cPanelTop = 0xFFFAFBFE.toInt(); cPanelBottom = 0xFFEFF2F6.toInt()
+            }
+            style == BandStyle.BLUE -> {
+                cBandTop = 0xF50E2033.toInt(); cBandBottom = 0xF508111E.toInt()
+                cText = 0xFFDCEBFF.toInt(); cDim = 0xFF7FA0C0.toInt()
+                cLine = 0x332E5A8A; cAccent = 0xFF4FC3FF.toInt(); cAccent2 = 0xFF2E8BFF.toInt()
+                cPanelTop = 0xFF0E2036.toInt(); cPanelBottom = 0xFF091426.toInt()
+            }
+            style == BandStyle.GREEN -> {
+                cBandTop = 0xF50E271C.toInt(); cBandBottom = 0xF5081712.toInt()
+                cText = 0xFFDCF5E6.toInt(); cDim = 0xFF7FA890.toInt()
+                cLine = 0x332E8A5A; cAccent = 0xFF3DDC97.toInt(); cAccent2 = 0xFF27B489.toInt()
+                cPanelTop = 0xFF0E271C.toInt(); cPanelBottom = 0xFF091812.toInt()
+            }
+            else -> {
+                cBandTop = 0xF5181F2A.toInt(); cBandBottom = 0xF50C111A.toInt()
+                cText = 0xFFE8ECF2.toInt(); cDim = 0xFF8B95A6.toInt()
+                cLine = 0x29FFFFFF; cAccent = 0xFF38E1C6.toInt(); cAccent2 = 0xFF2EA8FF.toInt()
+                cPanelTop = 0xFF1A2230.toInt(); cPanelBottom = 0xFF0D121B.toInt()
+            }
+        }
+        cPanelStroke = if (night) cLine else 0x1F000000
+        cChipBg = if (night) 0x12FFFFFF else 0x0F000000
+        cHairline = if (night) 0x24FFFFFF else 0x1F000000
+        (background as? GradientDrawable)?.apply {
+            setColors(intArrayOf(cBandTop, cBandBottom))
+        }
+    }
+
+    // ------------------------------------------------------------------ scheme helpers
+
+    /** The band surface: a deep-space vertical gradient instead of a flat colour. */
+    private fun bandBackground(): GradientDrawable = GradientDrawable().apply {
+        orientation = GradientDrawable.Orientation.TOP_BOTTOM
+        setColors(intArrayOf(cBandTop, cBandBottom))
+    }
+
+    /** The one coloured accent of the scheme: a cyan→blue light along the docked edge. */
+    private fun edgeGlow(): GradientDrawable = GradientDrawable().apply {
+        orientation = if (horizontal) GradientDrawable.Orientation.LEFT_RIGHT
+        else GradientDrawable.Orientation.TOP_BOTTOM
+        setColors(
+            intArrayOf(
+                cAccent and 0x00FFFFFF,
+                cAccent,
+                cAccent2,
+                cAccent2 and 0x00FFFFFF,
+            ),
+        )
+        cornerRadius = d(1).toFloat()
+    }
+
+    /** Cyan→teal gradient used by every active control. */
+    private fun gradFill(radiusDp: Int): GradientDrawable = GradientDrawable().apply {
+        orientation = GradientDrawable.Orientation.TOP_BOTTOM
+        setColors(intArrayOf(cAccent, shade(cAccent, 0.72f)))
+        cornerRadius = d(radiusDp).toFloat()
+    }
+
+    private fun shade(color: Int, factor: Float): Int {
+        val r = ((color shr 16 and 0xFF) * factor).toInt().coerceIn(0, 255)
+        val g = ((color shr 8 and 0xFF) * factor).toInt().coerceIn(0, 255)
+        val b = ((color and 0xFF) * factor).toInt().coerceIn(0, 255)
+        return (color and 0xFF000000.toInt()) or (r shl 16) or (g shl 8) or b
+    }
+
+    private fun accentStroke(): Int = (cAccent and 0x00FFFFFF) or 0x8A000000.toInt()
+
+    private fun accentSoft(alpha: Int, color: Int = cAccent): Int =
+        (color and 0x00FFFFFF) or (alpha shl 24)
+
+    /** Popup panel surface: the same deep-space gradient, slightly lighter than the band. */
+    private fun panelBackground(): GradientDrawable = GradientDrawable().apply {
+        orientation = GradientDrawable.Orientation.TOP_BOTTOM
+        setColors(intArrayOf(cPanelTop, cPanelBottom))
+        cornerRadius = d(30).toFloat()
+        setStroke(d(1), cPanelStroke)
+    }
+
+    private fun d(v: Int): Int = (v * contentScale * resources.displayMetrics.density).toInt()
+    private fun sf(v: Float): Float = v * contentScale
+
+    private class Chip(val icon: ImageView?, val badge: TextView?, val text: TextView, val label: TextView?)
+
+    private val chips = LinkedHashMap<String, Chip>()
+    private val controls = LinkedHashMap<String, View>()
+    private lateinit var expandButton: View
+    private lateinit var contentRow: LinearLayout
+    private var acLabel: TextView? = null
+    private var driveLabel: TextView? = null
+    private var sceneLabel: TextView? = null
+    private var panel: PopupWindow? = null
+
+    private var running = false
+    private var refreshing = false
+    private var moving = false
+    private var currentTemp: Double? = null
+
+    // The desktop accepts HVAC writes (SENT) but echoes no state back, so the panel keeps its own
+    // value for a short while instead of snapping back to `--`.
+    private var optTemp: Double? = null
+    private var optTempAt = 0L
+    private var optFan: Int? = null
+    private var optFanAt = 0L
+    private var optAc: Boolean? = null
+    private var optAcAt = 0L
+    private var optRecirc: Boolean? = null
+    private var optRecircAt = 0L
+    private var optDriveCode: String? = null
+    private var optDriveAt = 0L
+    private var optSceneCode: String? = null
+    private var optSceneAt = 0L
+    private var optFrontDefrost: Boolean? = null
+    private var optFrontDefrostAt = 0L
+    private var optRearDefrost: Boolean? = null
+    private var optRearDefrostAt = 0L
+    private var optDirection: Int? = null
+    private var optDirectionAt = 0L
+    private var chipFrontDefrost: TextView? = null
+    private var chipRearDefrost: TextView? = null
+    private val chipDirections = ArrayList<TextView>()
+
+
+    private fun fresh(at: Long) = at > 0L && System.currentTimeMillis() - at < 30 * 60 * 1000L
+
+    private var tempValue: TextView? = null
+    private var fanValue: TextView? = null
+    private var chipPower: TextView? = null
+    private var actionStatus: TextView? = null
+    private var chipAuto: TextView? = null
+    private var chipRecirc: TextView? = null
+    private var chipAc: TextView? = null
+    private val fanDots = ArrayList<View>()
+    private val seatCards = LinkedHashMap<String, TextView>()
+    private val driveButtons = LinkedHashMap<String, TextView>()
+    private val sceneButtons = LinkedHashMap<String, TextView>()
+
+    private val poll = object : Runnable {
+        override fun run() {
+            refresh()
+            main.postDelayed(this, REFRESH_MS)
+        }
+    }
+
+    init {
+        // Root runs along the dock axis; the glow line hugs the docked edge and everything else is
+        // the content row carrying the safety padding.
+        orientation = if (horizontal) VERTICAL else HORIZONTAL
+        background = bandBackground()
+        val glow = View(context).apply { background = edgeGlow() }
+        val glowLp = if (horizontal) {
+            LinearLayout.LayoutParams(MATCH_PARENT, d(3))
+        } else {
+            LinearLayout.LayoutParams(d(3), MATCH_PARENT)
+        }
+        contentRow = LinearLayout(context).apply {
+            orientation = if (horizontal) HORIZONTAL else VERTICAL
+            gravity = if (horizontal) Gravity.CENTER_VERTICAL else Gravity.CENTER_HORIZONTAL
+            if (horizontal) {
+                setPadding(d(if (slim) 46 else 66), 0, d(if (slim) 46 else 66), 0)
+            } else {
+                setPadding(0, d(if (slim) 24 else 40), 0, d(if (slim) 24 else 40))
+            }
+        }
+        val rowLp = if (horizontal) {
+            LinearLayout.LayoutParams(MATCH_PARENT, 0, 1f)
+        } else {
+            LinearLayout.LayoutParams(0, MATCH_PARENT, 1f)
+        }
+        when (edge) {
+            StatusRailEdge.TOP, StatusRailEdge.LEFT -> {
+                addView(glow, glowLp)
+                addView(contentRow, rowLp)
+            }
+            else -> {
+                addView(contentRow, rowLp)
+                addView(glow, glowLp)
+            }
+        }
+        buildBand()
+    }
+
+    // ------------------------------------------------------------------ band
+
+    private fun buildBand() {
+        // 窄条重做：更紧凑但不挤，芯片 46dp、间距 12/9、圆角 12，数值 16.5sp。
+        val gapMain = d(if (slim) 12 else 22)
+        val gapCross = d(if (slim) 9 else 16)
+        var first = true
+        // One list: readouts and controls render in the same user-defined order.
+        order.filter { it in components }.forEach { id ->
+            if (StatusRailSettings.isControl(id)) {
+                val button = buildControl(id)
+                controls[id] = button
+                contentRow.addView(button, controlParams(id, first, gapMain, gapCross))
+            } else {
+                contentRow.addView(buildChip(id), chipParams(first, gapMain, gapCross))
+            }
+            first = false
+        }
+        expandButton = buildExpand()
+        val expandLp = if (horizontal) {
+            LinearLayout.LayoutParams(d(if (slim) 40 else 48), d(if (slim) 40 else 48))
+        } else {
+            LinearLayout.LayoutParams(MATCH_PARENT, d(if (slim) 46 else 48))
+        }
+        if (!first) {
+            if (horizontal) expandLp.marginStart = gapMain else expandLp.topMargin = gapCross
+        }
+        contentRow.addView(expandButton, expandLp)
+    }
+
+    /** Uniform rhythm: every element on the band shares the same gap to its neighbour. */
+    private fun chipParams(first: Boolean, gapMain: Int, gapCross: Int): LinearLayout.LayoutParams {
+        val lp = if (horizontal) LinearLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT)
+        else LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT)
+        if (!first) {
+            if (horizontal) lp.marginStart = gapMain else lp.topMargin = gapCross
+        }
+        return lp
+    }
+
+    private fun controlParams(id: String, first: Boolean, gapMain: Int, gapCross: Int): LinearLayout.LayoutParams {
+        val pill = id == "ac" || id == "drive" || id == "scene"
+        val size = d(if (slim) 40 else 52)
+        val lp = when {
+            horizontal && pill -> LinearLayout.LayoutParams(WRAP_CONTENT, size)
+            horizontal -> LinearLayout.LayoutParams(size, size)
+            else -> LinearLayout.LayoutParams(MATCH_PARENT, d(if (slim) 46 else 48))
+        }
+        if (!first) {
+            if (horizontal) lp.marginStart = gapMain else lp.topMargin = gapCross
+        }
+        return lp
+    }
+
+    // ------------------------------------------------------------------ chips
+
+    private fun buildChip(id: String): View {
+        val holder = LinearLayout(context).apply {
+            orientation = if (horizontal) HORIZONTAL else VERTICAL
+            gravity = Gravity.CENTER
+        }
+        val baseSize = d(if (slim) 30 else 40)
+        var icon: ImageView? = null
+        var badge: TextView? = null
+        if (id == "gear") {
+            // The gear letter itself is the icon: a P badge on the shared gradient base.
+            badge = TextView(context).apply {
+                textSize = sf(if (slim) 13f else 17f)
+                setTextColor(cAccent)
+                typeface = Typeface.create("sans-serif", Typeface.BOLD)
+                gravity = Gravity.CENTER
+                includeFontPadding = false
+                background = GradientDrawable().apply {
+                    cornerRadius = d(if (slim) 12 else 12).toFloat()
+                    orientation = GradientDrawable.Orientation.TOP_BOTTOM
+                    setColors(intArrayOf(accentSoft(0x52), accentSoft(0x33, cAccent2)))
+                    setStroke(d(1), accentStroke())
+                }
+            }
+        } else {
+            icon = ImageView(context).apply {
+                setImageResource(iconFor(id))
+                setColorFilter(cAccent)
+                scaleType = ImageView.ScaleType.CENTER_INSIDE
+            }
+        }
+        val base = if (badge != null) {
+            badge!!.apply { tag = "badge" }
+        } else {
+            FrameLayout(context).apply {
+                background = GradientDrawable().apply {
+                    cornerRadius = d(if (slim) 12 else 12).toFloat()
+                    orientation = GradientDrawable.Orientation.TOP_BOTTOM
+                    setColors(intArrayOf(accentSoft(0x45), accentSoft(0x2B, cAccent2)))
+                }
+                addView(icon, FrameLayout.LayoutParams(
+                    (baseSize * 0.55f).toInt(), (baseSize * 0.55f).toInt(), Gravity.CENTER,
+                ))
+            }
+        }
+        val baseLp = LinearLayout.LayoutParams(baseSize, baseSize).apply {
+            if (horizontal) marginEnd = d(10) else { gravity = Gravity.CENTER_HORIZONTAL; bottomMargin = d(6) }
+        }
+        holder.addView(base, baseLp)
+
+        val column = LinearLayout(context).apply {
+            orientation = VERTICAL
+            gravity = if (horizontal) Gravity.CENTER_VERTICAL else Gravity.CENTER_HORIZONTAL
+        }
+        val text = TextView(context).apply {
+            textSize = sf(when {
+                horizontal && slim -> 15f
+                horizontal -> 21f
+                else -> 13f
+            })
+            setTextColor(cText)
+            typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+            includeFontPadding = false
+            isSingleLine = true
+            ellipsize = TextUtils.TruncateAt.END
+            maxWidth = d(if (horizontal) 200 else 120)
+            gravity = if (horizontal) Gravity.CENTER_VERTICAL else Gravity.CENTER
+        }
+        column.addView(text, LinearLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT))
+        val label = TextView(context).apply {
+            this.text = labelFor(id)
+            textSize = sf(when {
+                horizontal && slim -> 9f
+                horizontal -> 10.5f
+                else -> 9f
+            })
+            setTextColor(cDim)
+            includeFontPadding = false
+            isSingleLine = true
+            if (slim) visibility = View.GONE
+            gravity = Gravity.CENTER
+        }
+        column.addView(label, LinearLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply {
+            topMargin = d(if (horizontal) 2 else 3)
+        })
+        holder.addView(column, LinearLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT))
+        chips[id] = Chip(icon, badge, text, label)
+        return holder
+    }
+
+    private fun labelFor(id: String): String = when (id) {
+        "soc" -> "电量"
+        "range" -> "续航"
+        "gear" -> "档位"
+        "speed" -> "车速"
+        "climate" -> "空调"
+        "doors" -> "车门"
+        "sentry" -> "哨兵"
+        "power" -> "功率"
+        "temp" -> "车温"
+        "trip" -> "里程"
+        "location" -> "定位"
+        "media" -> "媒体"
+        else -> ""
+    }
+
+    private fun iconFor(id: String): Int = when (id) {
+        "soc" -> R.drawable.ic_chip_battery
+        "speed" -> R.drawable.ic_chip_speed
+        "location" -> R.drawable.ic_ctl_drive
+        "climate" -> R.drawable.ic_dock_snow
+        "range" -> R.drawable.ic_chip_range
+        "doors" -> R.drawable.ic_chip_door
+        "charging", "power" -> R.drawable.ic_dock_bolt
+        "sentry" -> R.drawable.ic_dock_shield
+        "temp" -> R.drawable.ic_dock_snow
+        else -> R.drawable.ic_chip_door
+    }
+
+    // ------------------------------------------------------------------ controls
+
+    private fun buildControl(id: String): View {
+        if (id == "ac") return buildAcControl()
+        if (id == "drive") return buildModeControl("drive")
+        if (id == "scene") return buildModeControl("scene")
+        return FrameLayout(context).apply {
+        background = controlBackground(false)
+        isClickable = true
+        isFocusable = true
+        pressFeedback(this)
+        addView(ImageView(context).apply {
+            setImageResource(
+                when (id) {
+                    "ac" -> R.drawable.ic_ctl_ac
+                    "seat" -> R.drawable.ic_ctl_seat
+                    "fog" -> R.drawable.ic_ctl_fog
+                    "tailgate" -> R.drawable.ic_ctl_tailgate
+                    else -> R.drawable.ic_ctl_drive
+                },
+            )
+            setColorFilter(cText)
+            layoutParams = FrameLayout.LayoutParams(d(if (slim) 18 else 26), d(if (slim) 18 else 26), Gravity.CENTER)
+        })
+        if (slim) visibility = View.GONE
+        setOnClickListener {
+            when (id) {
+                "ac" -> showAcPanel()
+                "fog" -> toggleFog()
+                "tailgate" -> confirmTailgate()
+                else -> showPanel()
+            }
+        }
+        }
+    }
+
+    /** Drive mode / scene as a pill that shows the current state and cycles on tap. */
+    private fun buildModeControl(kind: String): View = LinearLayout(context).apply {
+        orientation = HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+        background = controlBackground(false)
+        isClickable = true
+        isFocusable = true
+        pressFeedback(this)
+        setPadding(d(14), 0, d(16), 0)
+        val label = TextView(context).apply {
+            text = if (kind == "drive") "驾驶 --" else "场景 --"
+            textSize = sf(if (horizontal) 18f else 14f)
+            setTextColor(cText)
+            includeFontPadding = false
+            isSingleLine = true
+        }
+        if (kind == "drive") driveLabel = label else sceneLabel = label
+        addView(label)
+        setOnClickListener { if (kind == "drive") cycleDriveMode() else cycleSceneMode() }
+    }
+
+    /** Climate control doubles as its own readout: on/off, cooling or heating, setpoint, fan level. */
+    private fun buildAcControl(): View = LinearLayout(context).apply {
+        orientation = HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+        background = controlBackground(false)
+        isClickable = true
+        isFocusable = true
+        pressFeedback(this)
+        setPadding(d(12), 0, d(16), 0)
+        addView(ImageView(context).apply {
+            setImageResource(R.drawable.ic_dock_snow)
+            setColorFilter(cText)
+            layoutParams = LinearLayout.LayoutParams(d(24), d(24)).apply { marginEnd = d(10) }
+        })
+        acLabel = TextView(context).apply {
+            text = "空调 --"
+            textSize = sf(if (horizontal) 18f else 14f)
+            setTextColor(cText)
+            includeFontPadding = false
+            isSingleLine = true
+        }
+        addView(acLabel)
+        setOnClickListener { showAcPanel() }
+    }
+
+    /** A quick press highlight; the persistent on/off look is applied by [controlBackground]. */
+    private fun pressFeedback(view: View) {
+        view.setOnTouchListener { v, event ->
+            when (event.actionMasked) {
+                android.view.MotionEvent.ACTION_DOWN -> {
+                    (v.background as? GradientDrawable)?.setColor(accentSoft(0x5A))
+                    v.animate().scaleX(0.94f).scaleY(0.94f).setDuration(70).start()
+                }
+                android.view.MotionEvent.ACTION_UP,
+                android.view.MotionEvent.ACTION_CANCEL -> {
+                    v.animate().scaleX(1f).scaleY(1f).setDuration(70).start()
+                    refreshControlTint(v)
+                }
+            }
+            false
+        }
+    }
+
+    private fun refreshControlTint(view: View) {
+        if (view === expandButton) {
+            view.background = gradFill(if (slim) 13 else 16)
+            return
+        }
+        val id = controls.entries.firstOrNull { it.value === view }?.key ?: return
+        val on = when (id) {
+            "ac" -> optimisticOn(
+                "ac",
+                bool(lastReadings, "hvac.power") == true || bool(lastReadings, "hvac.ac") == true,
+            )
+            "fog" -> optimisticOn("fog", number(lastReadings, "light.fog") == 2.0)
+            else -> false
+        }
+        view.background = controlBackground(on)
+        (view as? FrameLayout)?.getChildAt(0)?.let { (it as? ImageView)?.setColorFilter(if (on) cOnIcon else cText) }
+    }
+
+    private fun controlBackground(active: Boolean): GradientDrawable = GradientDrawable().apply {
+        cornerRadius = d(if (slim) 13 else 16).toFloat()
+        if (active) {
+            orientation = GradientDrawable.Orientation.TOP_BOTTOM
+            setColors(intArrayOf(cAccent, shade(cAccent, 0.72f)))
+        } else {
+            setColor(cChipBg)
+            setStroke(d(1), cLine)
+        }
+    }
+
+    private fun buildExpand(): View = FrameLayout(context).apply {
+        background = gradFill(if (slim) 13 else 16)
+        isClickable = true
+        pressFeedback(this)
+        addView(ImageView(context).apply {
+            setImageResource(R.drawable.ic_ctl_expand_up)
+            setColorFilter(cOnIcon)
+            layoutParams = FrameLayout.LayoutParams(d(if (slim) 18 else 24), d(if (slim) 18 else 24), Gravity.CENTER)
+        })
+        setOnClickListener { showPanel() }
+    }
+
+    // ------------------------------------------------------------------ expand panel
+
+    private fun showPanel() {
+        if (panel?.isShowing == true) {
+            panel?.dismiss()
+            return
+        }
+        showPopup(buildPanel())
+    }
+
+    /** The dedicated climate button opens this smaller panel instead of toggling power blindly. */
+    private fun showAcPanel() {
+        if (panel?.isShowing == true) {
+            panel?.dismiss()
+            return
+        }
+        showPopup(buildAcPanel(), controls["ac"] ?: expandButton)
+    }
+
+    /** Dedicated climate panel: temperature, fan level, AUTO / recirculation / A/C and power. */
+    private fun buildAcPanel(): View {
+        val root = LinearLayout(context).apply {
+            orientation = VERTICAL
+            // Wide card, narrower content column: the extra width becomes breathing room on both
+            // sides instead of stretching every control.
+            layoutParams = LinearLayout.LayoutParams(d(920), WRAP_CONTENT)
+            setPadding(d(150), d(26), d(150), d(16))
+            background = panelBackground()
+        }
+
+        root.addView(TextView(context).apply {
+            text = "空调"
+            textSize = sf(20f)
+            setTextColor(cText)
+            typeface = Typeface.create("sans-serif", Typeface.BOLD)
+            includeFontPadding = false
+        })
+        root.addView(
+            panelLabel("温度"),
+            LinearLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply { topMargin = d(14) },
+        )
+
+        // Temperature: one big figure flanked by two generous steppers.
+        val tempRow = LinearLayout(context).apply {
+            orientation = HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, d(12), 0, d(6))
+        }
+        tempRow.addView(bigStep("−") { adjustTemperature(-0.5) })
+        tempValue = TextView(context).apply {
+            textSize = sf(64f)
+            typeface = Typeface.create("sans-serif", Typeface.BOLD)
+            setTextColor(cText)
+            gravity = Gravity.CENTER
+            includeFontPadding = false
+            isSingleLine = true
+            text = currentTemp?.let { format(it, 1) } ?: "--"
+        }
+        tempRow.addView(
+            tempValue,
+            LinearLayout.LayoutParams(0, WRAP_CONTENT, 1f).apply { marginStart = d(18); marginEnd = d(18) },
+        )
+        tempRow.addView(bigStep("+") { adjustTemperature(0.5) })
+        root.addView(tempRow)
+
+        root.addView(panelDividerLine())
+
+        // Fan: steppers plus the nine levels, all comfortably tappable.
+        val fanHead = LinearLayout(context).apply {
+            orientation = HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        fanHead.addView(panelLabel("风速"))
+        fanValue = TextView(context).apply {
+            textSize = sf(30f)
+            typeface = Typeface.create("sans-serif", Typeface.BOLD)
+            setTextColor(cText)
+            includeFontPadding = false
+            text = "--"
+        }
+        fanHead.addView(fanValue, LinearLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply { marginStart = d(14) })
+        fanHead.addView(TextView(context).apply {
+            text = "/9"
+            textSize = sf(16f)
+            setTextColor(cDim)
+            includeFontPadding = false
+        })
+        root.addView(fanHead, LinearLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply { topMargin = d(14) })
+
+        val fanRow = LinearLayout(context).apply {
+            orientation = HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, d(10), 0, 0)
+        }
+        fanRow.addView(stepButton("−", 76) { changeFan(-1) })
+        val dots = LinearLayout(context).apply {
+            orientation = HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        fanDots.clear()
+        repeat(9) { index ->
+            val dot = View(context).apply {
+                background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(cChipBg) }
+                isClickable = true
+                setOnClickListener { setFanLevel(index + 1) }
+            }
+            fanDots.add(dot)
+            dots.addView(dot, LinearLayout.LayoutParams(0, d(26), 1f).apply { marginEnd = d(8) })
+        }
+        fanRow.addView(dots, LinearLayout.LayoutParams(0, d(48), 1f).apply { marginStart = d(14); marginEnd = d(14) })
+        fanRow.addView(stepButton("+", 76) { changeFan(1) })
+        root.addView(fanRow)
+
+        root.addView(panelDividerLine())
+
+        // Switches: large, evenly sized, two rows.
+        val toggles = LinearLayout(context).apply {
+            orientation = HORIZONTAL
+            setPadding(0, d(12), 0, 0)
+        }
+        chipAuto = wideChip("AUTO") { toggleAuto() }
+        chipRecirc = wideChip("循环 --") { toggleRecirculation() }
+        chipAc = wideChip("A/C") { toggleAcSwitch() }
+        toggles.addView(chipAuto, wideParams(first = true))
+        toggles.addView(chipRecirc, wideParams())
+        toggles.addView(chipAc, wideParams())
+        root.addView(toggles)
+
+        val defrost = LinearLayout(context).apply {
+            orientation = HORIZONTAL
+            setPadding(0, d(10), 0, 0)
+        }
+        chipFrontDefrost = wideChip("前除霜") { toggleDefrost(front = true) }
+        chipRearDefrost = wideChip("后除霜") { toggleDefrost(front = false) }
+        defrost.addView(chipFrontDefrost, wideParams(first = true))
+        defrost.addView(chipRearDefrost, wideParams())
+        root.addView(defrost)
+
+        val dirRow = LinearLayout(context).apply {
+            orientation = HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, d(14), 0, 0)
+        }
+        dirRow.addView(panelLabel("风向"))
+        chipDirections.clear()
+        listOf("上", "中", "下", "脚").forEachIndexed { index, label ->
+            val chip = wideChip(label) { setFanDirection(index + 1) }
+            chipDirections.add(chip)
+            dirRow.addView(
+                chip,
+                LinearLayout.LayoutParams(0, d(64), 1f).apply { marginStart = d(10) },
+            )
+        }
+        root.addView(dirRow)
+
+        chipPower = TextView(context).apply {
+            text = "空调开关"
+            textSize = sf(20f)
+            setTextColor(cText)
+            gravity = Gravity.CENTER
+            isSingleLine = true
+            background = GradientDrawable().apply {
+                cornerRadius = d(18).toFloat()
+                setColor(cChipBg)
+            }
+            isClickable = true
+            isFocusable = true
+            pressFeedback(this)
+            setOnClickListener { toggleAc() }
+        }
+        root.addView(
+            chipPower,
+            LinearLayout.LayoutParams(MATCH_PARENT, d(76)).apply { topMargin = d(16) },
+        )
+
+        actionStatus = TextView(context).apply {
+            text = ""
+            textSize = sf(14f)
+            setTextColor(cDim)
+            includeFontPadding = false
+        }
+        root.addView(actionStatus, LinearLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply { topMargin = d(12) })
+        root.addView(View(context).apply { background = edgeGlow() },
+            LinearLayout.LayoutParams(MATCH_PARENT, d(3)).apply {
+                marginStart = d(150); marginEnd = d(150); topMargin = d(14)
+            })
+        return root
+    }
+
+    private fun bigStep(label: String, onClick: () -> Unit): View = TextView(context).apply {
+        text = label
+        textSize = sf(34f)
+        setTextColor(cText)
+        gravity = Gravity.CENTER
+        isFocusable = true
+        isClickable = true
+        background = GradientDrawable().apply {
+            cornerRadius = d(24).toFloat()
+            setColor(cChipBg)
+        }
+        setOnClickListener { onClick() }
+        layoutParams = LinearLayout.LayoutParams(d(96), d(96))
+    }
+
+    private fun stepButton(label: String, size: Int, onClick: () -> Unit): View = TextView(context).apply {
+        text = label
+        textSize = sf(26f)
+        setTextColor(cText)
+        gravity = Gravity.CENTER
+        isFocusable = true
+        isClickable = true
+        background = GradientDrawable().apply {
+            cornerRadius = d(18).toFloat()
+            setColor(cChipBg)
+        }
+        setOnClickListener { onClick() }
+        layoutParams = LinearLayout.LayoutParams(d(size), d(size))
+    }
+
+    private fun wideParams(first: Boolean = false) = LinearLayout.LayoutParams(0, d(72), 1f).apply {
+        if (!first) marginStart = d(10)
+    }
+
+    private fun wideChip(label: String, onClick: () -> Unit): TextView = TextView(context).apply {
+        text = label
+        textSize = sf(18f)
+        setTextColor(cText)
+        gravity = Gravity.CENTER
+        isSingleLine = true
+        isFocusable = true
+        isClickable = true
+        background = GradientDrawable().apply {
+            cornerRadius = d(16).toFloat()
+            setColor(cChipBg)
+        }
+        setOnClickListener { onClick() }
+    }
+
+    private fun panelDividerLine(): View = View(context).apply {
+        setBackgroundColor(cHairline)
+        layoutParams = LinearLayout.LayoutParams(MATCH_PARENT, d(1)).apply { topMargin = d(14) }
+    }
+
+    private fun changeFan(delta: Int) {
+        if (moving) return
+        val current = if (fresh(optFanAt)) optFan ?: 0 else
+            numberOk(lastReadings, "hvac.fanSpeed")?.toInt() ?: 0
+        setFanLevel((current + delta).coerceIn(0, 9))
+    }
+
+    private fun setFanLevel(level: Int) {
+        if (moving) return
+        optFan = level
+        optFanAt = System.currentTimeMillis()
+        fanValue?.text = level.toString()
+        fanDots.forEachIndexed { index, dot ->
+            (dot.background as? GradientDrawable)?.setColor(
+                if (index < level) (cAccent and 0x00FFFFFF) or 0xCC000000.toInt() else cChipBg,
+            )
+        }
+        sendControl("hvac.fanSpeed.set", "{\"level\":$level}")
+    }
+
+    private fun toggleAuto() {
+        if (moving) return
+        sendControl("hvac.auto.enable", "{}")
+    }
+
+    private fun showPopup(content: View, anchor: View = expandButton) {
+        // A panel that declares its width is measured with it, so inner rows are never squeezed.
+        val declaredWidth = content.layoutParams?.width ?: 0
+        val widthSpec = if (declaredWidth > 0) {
+            MeasureSpec.makeMeasureSpec(declaredWidth, MeasureSpec.EXACTLY)
+        } else {
+            MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED)
+        }
+        content.measure(widthSpec, MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED))
+        val popup = PopupWindow(content, content.measuredWidth, content.measuredHeight, true).apply {
+            setBackgroundDrawable(null)
+            isOutsideTouchable = true
+        }
+        panel = popup
+        anchor.post {
+            val location = IntArray(2)
+            anchor.getLocationInWindow(location)
+            val panelHeight = content.measuredHeight.coerceAtLeast(1)
+            val y = if (edge == StatusRailEdge.TOP) location[1] + anchor.height + d(12)
+            else (location[1] - panelHeight - d(12)).coerceAtLeast(d(12))
+            val x = (location[0] + anchor.width / 2 - content.measuredWidth / 2)
+                .coerceIn(d(12), (resources.displayMetrics.widthPixels - content.measuredWidth - d(12)).coerceAtLeast(d(12)))
+            runCatching { popup.showAtLocation(anchor, Gravity.NO_GRAVITY, x, y) }
+                .onFailure { popup.dismiss() }
+        }
+    }
+
+    private fun buildPanel(): View {
+        val comps = components
+        val showSeat = StatusRailSettings.showSeatSection(context) && "seat" in comps
+        val showDrive = "drive" in comps
+        val showScene = StatusRailSettings.showSceneSection(context) && "scene" in comps
+        val showTail = "tailgate" in comps
+        val showFog = "fog" in comps
+        // The panel mirrors the band selection: disabled modules disappear instead of leaving dead
+        // controls behind; a completely empty selection still shows the mode switches.
+        val none = !showSeat && !showDrive && !showScene && !showTail && !showFog
+        val showRight = showDrive || showScene || showTail || showFog || none
+
+        val root = LinearLayout(context).apply { orientation = VERTICAL }
+        val body = LinearLayout(context).apply {
+            orientation = if (horizontal) HORIZONTAL else VERTICAL
+            setPadding(d(28), d(24), d(28), d(18))
+        }
+        if (showSeat) {
+            body.addView(seatColumn(), LinearLayout.LayoutParams(d(420), WRAP_CONTENT))
+        }
+        if (showSeat && showRight) {
+            body.addView(panelDivider())
+        }
+        body.addView(
+            modeColumn(
+                showDrive = showDrive || none,
+                showScene = showScene || none,
+                showTail = showTail || none,
+                showFog = showFog || none,
+            ),
+            LinearLayout.LayoutParams(d(460), WRAP_CONTENT),
+        )
+        root.addView(body, LinearLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT))
+        root.addView(View(context).apply { background = edgeGlow() },
+            LinearLayout.LayoutParams(MATCH_PARENT, d(3)).apply {
+                marginStart = d(34); marginEnd = d(34); topMargin = d(12); bottomMargin = d(12)
+            })
+        return root
+    }
+
+    private fun panelDivider(): View {
+        val v = View(context).apply { setBackgroundColor(cHairline) }
+        v.layoutParams = if (horizontal) {
+            LinearLayout.LayoutParams(d(1), d(150)).apply { marginStart = d(20); marginEnd = d(20) }
+        } else {
+            LinearLayout.LayoutParams(MATCH_PARENT, d(1)).apply { topMargin = d(12); bottomMargin = d(12) }
+        }
+        return v
+    }
+
+    private fun panelLabel(text: String) = TextView(context).apply {
+        this.text = text
+        textSize = sf(18f)
+        setTextColor(cDim)
+        includeFontPadding = false
+    }
+
+    private fun seatColumn(): View {
+        val col = LinearLayout(context).apply { orientation = VERTICAL }
+        col.addView(panelLabel("座椅加热 / 通风"))
+        val grid = LinearLayout(context).apply { orientation = VERTICAL }
+        val seats = listOf("driver" to "主驾", "passenger" to "副驾", "rearLeft" to "左后", "rearRight" to "右后")
+        seats.chunked(2).forEach { pair ->
+            val row = LinearLayout(context).apply { orientation = HORIZONTAL }
+            pair.forEach { (key, label) ->
+                val text = TextView(context).apply {
+                    text = "$label · --"
+                    textSize = sf(17f)
+                    setTextColor(cDim)
+                    gravity = Gravity.CENTER
+                    includeFontPadding = false
+                    background = GradientDrawable().apply {
+                        cornerRadius = d(15).toFloat()
+                        setColor(cChipBg)
+                    }
+                    isClickable = true
+                    setOnClickListener { cycleSeatHeat(key) }
+                    setOnLongClickListener { cycleSeatVent(key); true }
+                }
+                seatCards[key] = text
+                row.addView(text, LinearLayout.LayoutParams(d(190), d(64)).apply { marginEnd = d(9); bottomMargin = d(9) })
+            }
+            grid.addView(row)
+        }
+        col.addView(grid, LinearLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply { topMargin = d(10) })
+        return col
+    }
+
+    private fun modeColumn(showDrive: Boolean, showScene: Boolean, showTail: Boolean, showFog: Boolean): View {
+        val col = LinearLayout(context).apply { orientation = VERTICAL }
+        if (showDrive) {
+            col.addView(panelLabel("驾驶模式"))
+            val driveRow = LinearLayout(context).apply { orientation = HORIZONTAL }
+            listOf("standard" to "标准", "economy" to "经济", "sport" to "运动", "economyPlus" to "经济+")
+                .forEach { (code, label) ->
+                    val button = segButton(label) { sendControl("drive.mode.set", "{\"mode\":\"$code\"}") }
+                    driveButtons[code] = button
+                    driveRow.addView(button, LinearLayout.LayoutParams(0, d(52), 1f).apply { marginEnd = d(8) })
+                }
+            col.addView(driveRow, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply { topMargin = d(12) })
+        }
+
+        if (showScene) {
+            col.addView(panelLabel("场景模式"), LinearLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply { topMargin = d(16) })
+            val sceneRow = LinearLayout(context).apply { orientation = HORIZONTAL }
+            listOf("rest" to "休息", "camp" to "露营", "off" to "关闭").forEach { (code, label) ->
+                val button = segButton(label) { sendControl("scene.mode.set", "{\"mode\":\"$code\"}") }
+                sceneButtons[code] = button
+                sceneRow.addView(button, LinearLayout.LayoutParams(0, d(52), 1f).apply { marginEnd = d(8) })
+            }
+            col.addView(sceneRow, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply { topMargin = d(12) })
+        }
+
+        if (showTail || showFog) {
+            val actions = LinearLayout(context).apply { orientation = HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+            if (showTail) actions.addView(panelChip("尾门 · 开") { confirmTailgate() })
+            if (showFog) {
+                actions.addView(panelChip("雾灯") { toggleFog() },
+                    LinearLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply { marginStart = if (showTail) d(8) else 0 })
+            }
+            col.addView(actions, LinearLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply { topMargin = d(14) })
+        }
+        return col
+    }
+
+    private fun panelChip(text: String, onClick: () -> Unit): TextView = TextView(context).apply {
+        this.text = text
+        textSize = sf(16f)
+        setTextColor(cText)
+        gravity = Gravity.CENTER
+        isSingleLine = true
+        maxLines = 1
+        setPadding(d(16), d(10), d(16), d(10))
+        background = GradientDrawable().apply {
+            cornerRadius = d(13).toFloat()
+            setColor(cChipBg)
+        }
+        isClickable = true
+        setOnClickListener { onClick() }
+    }
+
+    private fun segButton(label: String, onClick: () -> Unit): TextView = TextView(context).apply {
+        text = label
+        textSize = sf(14f)
+        isSingleLine = true
+        ellipsize = TextUtils.TruncateAt.END
+        setTextColor(cDim)
+        gravity = Gravity.CENTER
+        background = GradientDrawable().apply {
+            cornerRadius = d(13).toFloat()
+            setColor(cChipBg)
+        }
+        isClickable = true
+        setOnClickListener { onClick() }
+    }
+
+    // ------------------------------------------------------------------ data
+
+    fun start() {
+        if (running) return
+        running = true
+        if (cachedReadings.isNotEmpty()) {
+            runCatching { applyReadings(cachedReadings, cachedSentry) }
+        }
+        main.post(poll)
+    }
+
+    fun stop() {
+        running = false
+        main.removeCallbacks(poll)
+    }
+
+    private fun refresh() {
+        if (refreshing || !running) return
+        refreshing = true
+        val appContext = context.applicationContext
+        worker.execute {
+            val readings = runCatching { LingFansClient.read(appContext, KEYS) }.getOrDefault(emptyMap())
+            val sentry = runCatching { SentryState.readRecording(appContext) }.getOrNull()
+            main.post {
+                refreshing = false
+                applyReadings(readings, sentry)
+            }
+        }
+    }
+
+    private var lastReadings: Map<String, LingFansReading> = emptyMap()
+
+    /** Tap feedback that survives until the desktop reports back (SENT is not "executed"). */
+    private val optimistic = HashMap<String, Pair<Boolean, Long>>()
+
+    private fun optimisticOn(id: String, reported: Boolean): Boolean {
+        val entry = optimistic[id] ?: return reported
+        if (System.currentTimeMillis() - entry.second > 6000L) {
+            optimistic.remove(id)
+            return reported
+        }
+        return entry.first
+    }
+
+    /** 第一轮真实数据到达时回调一次（宿主用它决定何时显示状态条）。 */
+    var onDataReady: (() -> Unit)? = null
+
+    @Volatile
+    private var dataReadyFired = false
+
+    private fun applyReadings(readings: Map<String, LingFansReading>, sentryRecording: Boolean?) {
+        lastReadings = readings
+        if (readings.isNotEmpty() && !dataReadyFired) {
+            dataReadyFired = true
+            onDataReady?.invoke()
+        }
+        if (readings.isNotEmpty()) {
+            cachedReadings = readings
+            cachedSentry = sentryRecording
+        }
+        val speed = number(readings, "vehicle.speed")
+        moving = speed != null && speed > 0
+        val mute = if (moving) 0.4f else 1f
+        controls.values.forEach {
+            it.alpha = mute
+            it.isEnabled = !moving
+        }
+
+        if (style == BandStyle.AUTO) {
+            val reported = readings["display.nightMode"]
+            if (reported?.status == "ok") {
+                val night = if (forcedNight != null) forcedNight else
+                    (reported.value == true || reported.value?.toString() == "true")
+                if (night != nightNow) {
+                    nightNow = night
+                    resolvePalette()
+                }
+            }
+        }
+        chips["soc"]?.let { chip ->
+            val soc = number(readings, "battery.soc")
+            // Charging means exactly one thing on this car: parked in P with negative pack power.
+            // SOC creep while driving is normal consumption drift, not charging.
+            val power = numberOk(readings, "battery.power")
+            val gearNow = string(readings, "vehicle.gearName")
+                ?: (if (bool(readings, "vehicle.parking") == true) "P"
+                else gearFromRaw(numberOk(readings, "vehicle.gear")))
+            val parked = bool(readings, "vehicle.parking") == true || gearNow == "P"
+            val charging = parked && power != null && power < 0.0
+            chip.text.text = if (soc == null) "--" else "${format(soc, 0)}%"
+            chip.label?.text = if (charging) "充电中" else "电量"
+            val color = when {
+                charging -> AMBER
+                soc == null -> cText
+                soc < 20 -> RED
+                soc < 40 -> AMBER
+                else -> cAccent
+            }
+            chip.text.setTextColor(color)
+            chip.icon?.setColorFilter(color)
+        }
+        chips["range"]?.let { chip ->
+            // `vehicle.remainingRange` is a raw vendor value: a 0 next to a healthy SOC is "unknown",
+            // not an empty battery.
+            val range = number(readings, "vehicle.remainingRange")?.takeIf { it > 0.0 }
+            chip.text.text = if (range == null) "--" else "${format(range, 0)} km"
+            val color = when {
+                range == null -> cText
+                range < 30 -> RED
+                range < 80 -> AMBER
+                else -> cAccent
+            }
+            chip.text.setTextColor(color)
+            chip.icon?.setColorFilter(color)
+        }
+        chips["gear"]?.let { chip ->
+            val parking = bool(readings, "vehicle.parking")
+            val gear = string(readings, "vehicle.gearName")
+                ?: if (parking == true) "P" else gearFromRaw(number(readings, "vehicle.gear"))
+            // Without a gear there is no badge worth showing: a bare `--` reads better than `[--] --`.
+            chip.badge?.visibility = if (gear == null) View.GONE else View.VISIBLE
+            chip.badge?.text = gear ?: ""
+            chip.text.text = when {
+                parking == true -> "驻车"
+                gear != null -> gear
+                else -> "--"
+            }
+        }
+        chips["speed"]?.let { chip ->
+            // Raw vehicle speed can arrive as a vendor counter; only a plausible road speed is shown,
+            // otherwise fall back to the GPS speed from the same provider.
+            // Parked cars report GPS drift; a P-gear reading wins over a noisy GPS speed.
+            val parking = bool(readings, "vehicle.parking")
+            val speed = if (parking == true) {
+                0.0
+            } else {
+                saneSpeed(number(readings, "vehicle.speed"))
+                    ?: saneSpeed(number(readings, "location.speed"))
+            }
+            chip.text.text = if (speed == null) "--" else "${format(speed, 0)} km/h"
+            chip.icon?.setColorFilter(cText)
+        }
+        acLabel?.let { label ->
+            val power = bool(readings, "hvac.power")
+            val acRaw = bool(readings, "hvac.ac")
+            val ac = if (fresh(optAcAt)) optAc else acRaw
+            val temp = if (fresh(optTempAt)) optTemp else number(readings, "hvac.temperature")
+            val fan = if (fresh(optFanAt)) optFan?.toDouble() else number(readings, "hvac.fanSpeed")
+            val on = ac == true || power == true
+            label.text = when {
+                !horizontal -> when {
+                    temp != null -> "${format(temp, 1)}℃"
+                    on -> "开"
+                    power == false || acRaw == false -> "关"
+                    else -> "--"
+                }
+                on -> buildString {
+                    append("空调 ")
+                    append(if (ac == true) "制冷" else "制热")
+                    temp?.let { append(" ${format(it, 1)}℃") }
+                    fan?.let { append(" · ${format(it, 0)}档") }
+                }
+                power == false || acRaw == false -> "空调 关"
+                else -> "空调 --"
+            }
+            label.setTextColor(if (on) cOnIcon else cText)
+            val container = label.parent as? View
+            container?.background = controlBackground(on)
+            (container as? LinearLayout)?.getChildAt(0)?.let {
+                (it as? ImageView)?.setColorFilter(if (on) cOnIcon else cText)
+            }
+        }
+        chips["climate"]?.let { chip ->
+            val power = bool(readings, "hvac.power")
+            val acRaw = bool(readings, "hvac.ac")
+            val ac = if (fresh(optAcAt)) optAc else acRaw
+            val temp = if (fresh(optTempAt)) optTemp else number(readings, "hvac.temperature")
+            val fan = if (fresh(optFanAt)) optFan?.toDouble() else number(readings, "hvac.fanSpeed")
+            val on = power == true || ac == true
+            chip.text.text = when {
+                temp != null && fan != null -> "${format(temp, 1)}℃ · ${format(fan, 0)}档"
+                temp != null -> "${format(temp, 1)}℃"
+                on -> "空调 · 开"
+                power == false || ac == false -> "空调 · 关"
+                else -> "--"
+            }
+            val color = if (on) cAccent else cText
+            chip.text.setTextColor(color)
+            chip.icon?.setColorFilter(color)
+        }
+        chips["doors"]?.let { chip ->
+            val summary = string(readings, "body.doorSummary")
+            val open = bool(readings, "body.doorsOpen")
+            val doors = openDoors(readings)
+            val warn = open == true || doors.isNotEmpty()
+            // Name the open doors instead of a generic warning: the desktop's summary already does
+            // it, and when it is missing we rebuild the list from the per-door flags.
+            chip.text.text = when {
+                doors.isNotEmpty() -> "开：${doors.joinToString("/")}"
+                summary != null -> summary
+                warn -> "车门未关"
+                open == false -> "车门已关闭"
+                else -> "--"
+            }
+            chip.text.setTextColor(if (warn) AMBER else cText)
+            chip.icon?.setColorFilter(if (warn) AMBER else cText)
+        }
+        chips["sentry"]?.let { chip ->
+            chip.text.text = when (sentryRecording) {
+                true -> if (slim) "REC" else "录制中"
+                false -> "待机"
+                null -> "--"
+            }
+            val color = if (sentryRecording == true) cAccent else cDim
+            chip.text.setTextColor(color)
+            chip.icon?.setColorFilter(color)
+        }
+        chips["power"]?.let { chip ->
+            val power = number(readings, "battery.power")
+            chip.text.text = when {
+                power == null -> "--"
+                power < 0 -> "${format(-power, 1)}kW 回收"
+                else -> "${format(power, 1)} kW"
+            }
+        }
+        chips["temp"]?.let { chip ->
+            val temp = number(readings, "system.temperatureCelsius")
+            chip.text.text = if (temp == null) "--" else "${format(temp, 0)}℃"
+        }
+        chips["trip"]?.let { chip ->
+            // Today's distance is what a driver expects from a "trip" chip; fall back to this trip.
+            val today = number(readings, "daily.distance")
+            val session = number(readings, "trip.distance")
+            val km = today ?: session
+            chip.text.text = if (km == null) "--" else "${format(km, 1)} km"
+        }
+        chips["location"]?.let { chip ->
+            // GPS accuracy only: the speed chip already covers speed, duplicating it reads as a bug.
+            val accuracy = number(readings, "location.accuracy")
+            chip.text.text = if (accuracy == null) "--" else "±${format(accuracy, 0)}m"
+        }
+        chips["media"]?.let { chip ->
+            chip.text.text = string(readings, "media.title") ?: "--"
+        }
+
+        // panel state
+        val reportedTemp = number(readings, "hvac.temperature")
+        if (fresh(optTempAt)) {
+            currentTemp = optTemp
+        } else {
+            currentTemp = reportedTemp
+        }
+        currentTemp?.let { tempValue?.text = format(it, 1) }
+        val reportedFan = number(readings, "hvac.fanSpeed")
+        val fanNumber = (if (fresh(optFanAt)) optFan?.toDouble() else reportedFan)
+        fanValue?.text = fanNumber?.let { format(it, 0) } ?: "--"
+        val fan = fanNumber?.toInt() ?: 0
+        fanDots.forEachIndexed { index, dot ->
+            (dot.background as? GradientDrawable)?.setColor(if (index < fan) cAccent else cHairline)
+        }
+        val autoOn = bool(readings, "hvac.auto") == true
+        val recircReported = number(readings, "hvac.recirculation")?.let { it == 1.0 }
+        val recircInner = if (fresh(optRecircAt)) optRecirc else recircReported
+        val acOnChip = if (fresh(optAcAt)) optAc == true else bool(readings, "hvac.ac") == true
+        val powerOn = bool(readings, "hvac.power") == true || acOnChip
+        listOf(
+            chipAuto to autoOn,
+            chipRecirc to (recircInner == true),
+            chipAc to acOnChip,
+            chipPower to powerOn,
+        ).forEach { (chip, on) ->
+            chip?.let { paintToggleChip(it, on) }
+        }
+        val frontOn = if (fresh(optFrontDefrostAt)) optFrontDefrost == true
+            else bool(readings, "hvac.frontDefrost") == true
+        val rearOn = if (fresh(optRearDefrostAt)) optRearDefrost == true
+            else bool(readings, "hvac.rearDefrost") == true
+        chipFrontDefrost?.let { paintToggleChip(it, frontOn) }
+        chipRearDefrost?.let { paintToggleChip(it, rearOn) }
+        val direction = if (fresh(optDirectionAt)) optDirection
+            else numberOk(readings, "hvac.fanDirection")?.toInt()
+        chipDirections.forEachIndexed { index, chip -> paintToggleChip(chip, direction == index + 1) }
+        chipRecirc?.text = when (recircInner) {
+            true -> "内循环"
+            false -> "外循环"
+            null -> "循环 --"
+        }
+        val reportedDrive = string(readings, "drive.modeCode")
+        val driveCode = if (fresh(optDriveAt)) optDriveCode ?: reportedDrive else reportedDrive
+        val driveName = string(readings, "drive.modeName")
+            ?: DRIVE_MODES.firstOrNull { it.first == driveCode }?.second
+        driveLabel?.text = if (driveName != null) "驾驶 $driveName" else "驾驶 --"
+        driveLabel?.setTextColor(if (driveName != null) cOnIcon else cText)
+        (driveLabel?.parent as? View)?.background = controlBackground(driveName != null)
+        val reportedScene = string(readings, "scene.modeCode")
+        val sceneCode = if (fresh(optSceneAt)) optSceneCode ?: reportedScene else reportedScene
+        val sceneName = string(readings, "scene.stateName")
+            ?: SCENE_MODES.firstOrNull { it.first == sceneCode }?.second
+        sceneLabel?.text = if (sceneName != null) "场景 $sceneName" else "场景 --"
+        val sceneActive = sceneName != null && sceneCode != "off"
+        sceneLabel?.setTextColor(if (sceneActive) cOnIcon else cText)
+        (sceneLabel?.parent as? View)?.background = controlBackground(sceneActive)
+        driveButtons.forEach { (code, button) ->
+            paintToggleChip(button, code == driveCode)
+        }
+        sceneButtons.forEach { (code, button) ->
+            paintToggleChip(button, code == sceneCode && sceneCode != "off")
+        }
+        seatCards.forEach { (seat, card) ->
+            val level = number(readings, "seat.$seat.heat")?.toInt() ?: 0
+            val label = when (seat) {
+                "driver" -> "主驾"
+                "passenger" -> "副驾"
+                "rearLeft" -> "左后"
+                else -> "右后"
+            }
+            val on = level > 0
+            card.text = "$label · ${if (on) "加热 $level 档" else "关"}"
+            card.setTextColor(if (on) cOnIcon else cDim)
+            (card.background as? GradientDrawable)?.apply {
+                if (on) {
+                    orientation = GradientDrawable.Orientation.TOP_BOTTOM
+                    setColors(intArrayOf(cAccent, shade(cAccent, 0.72f)))
+                    setStroke(0, 0)
+                } else {
+                    setColor(cChipBg)
+                    setStroke(d(1), cLine)
+                }
+            }
+        }
+        val fog = optimisticOn("fog", number(readings, "light.fog") == 2.0)
+        controls["fog"]?.let { view ->
+            val on = fog
+            view.background = controlBackground(on)
+            (view as? FrameLayout)?.getChildAt(0)?.let { (it as? ImageView)?.setColorFilter(if (on) cOnIcon else cText) }
+        }
+        val acOn = optimisticOn("ac", bool(readings, "hvac.power") == true || bool(readings, "hvac.ac") == true)
+        controls["ac"]?.let { view ->
+            view.background = controlBackground(acOn)
+            (view as? FrameLayout)?.getChildAt(0)?.let { (it as? ImageView)?.setColorFilter(if (acOn) cOnIcon else cText) }
+        }
+    }
+
+    // ------------------------------------------------------------------ actions
+
+    private fun toggleAc() {
+        if (moving) return
+        val on = (if (fresh(optAcAt)) optAc == true else bool(lastReadings, "hvac.ac") == true) ||
+            bool(lastReadings, "hvac.power") == true
+        val next = !on
+        optAc = next
+        optAcAt = System.currentTimeMillis()
+        optimistic["ac"] = next to System.currentTimeMillis()
+        controls["ac"]?.let { view ->
+            view.background = controlBackground(next)
+            (view as? FrameLayout)?.getChildAt(0)?.let { (it as? ImageView)?.setColorFilter(if (next) cOnIcon else cText) }
+        }
+        sendControl("hvac.power.set", "{\"on\":$next}")
+    }
+
+    private fun toggleFog() {
+        if (moving) return
+        val on = number(lastReadings, "light.fog") == 2.0
+        val next = !on
+        optimistic["fog"] = next to System.currentTimeMillis()
+        controls["fog"]?.let { view ->
+            view.background = controlBackground(next)
+            (view as? FrameLayout)?.getChildAt(0)?.let { (it as? ImageView)?.setColorFilter(if (next) cOnIcon else cText) }
+        }
+        sendControl("light.fog.set", "{\"on\":$next}")
+    }
+
+    /** The A/C chip writes `hvac.ac.set`; the separate power chip writes `hvac.power.set`. */
+    private fun toggleDefrost(front: Boolean) {
+        if (moving) return
+        val on = if (front) (bool(lastReadings, "hvac.frontDefrost") == true) else
+            (bool(lastReadings, "hvac.rearDefrost") == true)
+        val next = !on
+        if (front) {
+            optFrontDefrost = next; optFrontDefrostAt = System.currentTimeMillis()
+        } else {
+            optRearDefrost = next; optRearDefrostAt = System.currentTimeMillis()
+        }
+        (if (front) chipFrontDefrost else chipRearDefrost)?.let { paintToggleChip(it, next) }
+        val key = if (front) "hvac.frontDefrost" else "hvac.rearDefrost"
+        sendControl("$key.set", "{\"on\":$next}")
+    }
+
+    private fun setFanDirection(direction: Int) {
+        if (moving) return
+        optDirection = direction
+        optDirectionAt = System.currentTimeMillis()
+        chipDirections.forEachIndexed { index, chip -> paintToggleChip(chip, index + 1 == direction) }
+        sendControl("hvac.fanDirection.set", "{\"direction\":$direction}")
+    }
+
+    private fun paintToggleChip(chip: TextView, on: Boolean) {
+        chip.setTextColor(if (on) cOnIcon else cDim)
+        (chip.background as? GradientDrawable)?.apply {
+            if (on) {
+                orientation = GradientDrawable.Orientation.TOP_BOTTOM
+                setColors(intArrayOf(cAccent, shade(cAccent, 0.72f)))
+                setStroke(0, 0)
+            } else {
+                setColor(cChipBg)
+                setStroke(d(1), cLine)
+            }
+        }
+    }
+
+    private fun toggleAcSwitch() {
+        if (moving) return
+        val on = if (fresh(optAcAt)) optAc == true else bool(lastReadings, "hvac.ac") == true
+        val next = !on
+        optAc = next
+        optAcAt = System.currentTimeMillis()
+        chipAc?.let { paintToggleChip(it, next) }
+        sendControl("hvac.ac.set", "{\"on\":$next}")
+    }
+
+    private fun toggleRecirculation() {
+        if (moving) return
+        val reported = number(lastReadings, "hvac.recirculation")?.let { it == 1.0 }
+        val inner = if (fresh(optRecircAt)) optRecirc == true else reported == true
+        val next = !inner
+        optRecirc = next
+        optRecircAt = System.currentTimeMillis()
+        chipRecirc?.text = if (next) "内循环" else "外循环"
+        sendControl("hvac.recirculation.set", "{\"mode\":\"${if (next) "inner" else "outer"}\"}")
+    }
+
+    private fun adjustTemperature(delta: Double) {
+        if (moving) return
+        // Without a reported setpoint the first tap starts from a sane interior default instead of
+        // doing nothing.
+        val current = currentTemp ?: 24.0
+        val next = (current + delta).coerceIn(17.0, 33.0)
+        currentTemp = next
+        optTemp = next
+        optTempAt = System.currentTimeMillis()
+        tempValue?.text = format(next, 1)
+        sendControl("hvac.temperature.set", "{\"celsius\":${format(next, 1)}}")
+    }
+
+    private fun cycleSeatHeat(seat: String) {
+        if (moving) return
+        val level = number(lastReadings, "seat.$seat.heat")?.toInt() ?: 0
+        val next = (level + 1) % 4
+        sendControl("seat.heat.set", "{\"seat\":\"$seat\",\"level\":$next}")
+    }
+
+    private fun cycleDriveMode() {
+        if (moving) return
+        // Cycle from what the user last saw, not from a null report, otherwise it sticks on mode 0.
+        val current = if (fresh(optDriveAt)) optDriveCode else string(lastReadings, "drive.modeCode")
+        val index = DRIVE_MODES.indexOfFirst { it.first == current }
+        val next = DRIVE_MODES[(index + 1).mod(DRIVE_MODES.size)]
+        optDriveCode = next.first
+        optDriveAt = System.currentTimeMillis()
+        driveLabel?.text = "驾驶 ${next.second}"
+        driveLabel?.setTextColor(cOnIcon)
+        (driveLabel?.parent as? View)?.background = controlBackground(true)
+        sendControl("drive.mode.set", "{\"mode\":\"${next.first}\"}")
+    }
+
+    private fun cycleSceneMode() {
+        if (moving) return
+        val current = if (fresh(optSceneAt)) optSceneCode else string(lastReadings, "scene.modeCode")
+        val index = SCENE_MODES.indexOfFirst { it.first == current }
+        val next = SCENE_MODES[(index + 1).mod(SCENE_MODES.size)]
+        optSceneCode = next.first
+        optSceneAt = System.currentTimeMillis()
+        val active = next.first != "off"
+        sceneLabel?.text = "场景 ${next.second}"
+        sceneLabel?.setTextColor(if (active) cOnIcon else cText)
+        (sceneLabel?.parent as? View)?.background = controlBackground(active)
+        sendControl("scene.mode.set", "{\"mode\":\"${next.first}\"}")
+    }
+
+    private fun cycleSeatVent(seat: String) {
+        if (moving) return
+        val level = number(lastReadings, "seat.$seat.vent")?.toInt() ?: 0
+        val next = (level + 1) % 4
+        sendControl("seat.vent.set", "{\"seat\":\"$seat\",\"level\":$next}")
+    }
+
+    private fun confirmTailgate() {
+        if (moving) return
+        AlertDialog.Builder(context)
+            .setTitle("尾门")
+            .setMessage("确认执行尾门动作？需要车辆处于 P 挡。")
+            .setPositiveButton("执行") { _, _ ->
+                sendControl("body.tailgate.set", "{\"action\":\"open\"}")
+            }
+            .setNegativeButton("取消", null)
+            .show()
+    }
+
+    private fun sendControl(capabilityId: String, paramsJson: String) {
+        val appContext = context.applicationContext
+        worker.execute {
+            val commandId = runCatching { LingFansClient.execute(appContext, capabilityId, paramsJson) }.getOrNull()
+            main.post {
+                // `SENT` only means the link accepted the request; the vehicle may still reject it.
+                actionStatus?.text = if (commandId != null) {
+                    "已受理 · 等待车辆执行"
+                } else {
+                    "未受理（被拒绝或链路不可用）"
+                }
+                actionStatus?.setTextColor(if (commandId != null) cAccent else RED)
+            }
+        }
+    }
+
+    // ------------------------------------------------------------------ helpers
+
+    private val doorKeys = listOf(
+        "body.door.driver" to "左前",
+        "body.door.passenger" to "右前",
+        "body.door.rearLeft" to "左后",
+        "body.door.rearRight" to "右后",
+        "body.door.tailgate" to "后备箱",
+    )
+
+    /** A road speed must be 0..300 km/h; anything else is a raw counter, not a speed. */
+    private fun saneSpeed(value: Double?): Double? =
+        value?.takeIf { it >= 0.0 && it <= 300.0 }
+
+    private fun openDoors(readings: Map<String, LingFansReading>): List<String> =
+        doorKeys.filter { (key, _) -> number(readings, key) == 1.0 }.map { it.second }
+
+    /**
+     * `vehicle.gear` is a per-model raw code; when `vehicle.gearName` is missing this maps the two
+     * known families (星光 2024: P=10/R=14/N=13/D=12, 星光 S: P=3/R=2/N=0/D=1) so the chip does not
+     * flicker to `--` just because the translated field lagged.
+     */
+    private fun gearFromRaw(raw: Double?): String? {
+        val value = raw?.toInt() ?: return null
+        return when (value) {
+            10 -> "P"
+            14 -> "R"
+            13 -> "N"
+            12 -> "D"
+            3 -> "P"
+            2 -> "R"
+            1 -> "D"
+            else -> null
+        }
+    }
+
+    private fun reading(readings: Map<String, LingFansReading>, key: String): LingFansReading? {
+        val item = readings[key] ?: return null
+        return if (item.usable) item else null
+    }
+
+    private fun number(readings: Map<String, LingFansReading>, key: String): Double? =
+        when (val v = reading(readings, key)?.value) {
+            is Number -> v.toDouble()
+            is String -> v.toDoubleOrNull()
+            else -> null
+        }
+
+    private fun string(readings: Map<String, LingFansReading>, key: String): String? =
+        reading(readings, key)?.value?.toString()?.takeIf { it.isNotEmpty() }
+
+    /** Only a freshly confirmed value counts; `stale` must not drive a live state like charging. */
+    private fun boolOk(readings: Map<String, LingFansReading>, key: String): Boolean? {
+        val item = readings[key] ?: return null
+        if (item.status != "ok") return null
+        return when (val v = item.value) {
+            is Boolean -> v
+            is String -> v.equals("true", ignoreCase = true)
+            else -> null
+        }
+    }
+
+    private fun numberOk(readings: Map<String, LingFansReading>, key: String): Double? {
+        val item = readings[key] ?: return null
+        if (item.status != "ok") return null
+        return when (val v = item.value) {
+            is Number -> v.toDouble()
+            is String -> v.toDoubleOrNull()
+            else -> null
+        }
+    }
+
+    private fun stringOk(readings: Map<String, LingFansReading>, key: String): String? {
+        val item = readings[key] ?: return null
+        if (item.status != "ok") return null
+        return item.value?.toString()?.takeIf { it.isNotEmpty() }
+    }
+
+    private fun bool(readings: Map<String, LingFansReading>, key: String): Boolean? =
+        when (val v = reading(readings, key)?.value) {
+            is Boolean -> v
+            is String -> v.equals("true", ignoreCase = true)
+            else -> null
+        }
+
+    private fun format(value: Double, decimals: Int): String =
+        if (decimals == 0 && value == Math.floor(value) && !value.isInfinite()) {
+            value.toLong().toString()
+        } else {
+            String.format(Locale.US, "%.${decimals}f", value)
+        }
+}
