@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="asset/hplay_small.png" width="180" height="180" alt="Hplay icon" />
+  <img src="asset/logo.png" width="180" height="180" alt="Hplay logo" />
   <h1>Hplay</h1>
   <p><a href="README.md">中文</a> | <a href="README.en.md">English</a></p>
   <p><strong>An open-source Android head-unit receiver (Sink) for phones: CarPlay / CarLife / ICCOA CarLink / AirPlay screen mirroring — four protocols, one app.</strong></p>
@@ -113,14 +113,6 @@ or uses BAA authentication, avoiding a locally attached MFi chip. Endpoints:
 
 Optional standard Bearer Authentication. Currently only BAA Authentication has
 been tested.
-
-## Acknowledgements
-
-- [LIVI](https://github.com/f-io/LIVI) — an important reference for this project.
-- [showcase](https://github.com/amineross/showcase) — an important reference for the BAA authentication.
-- [UxPlay](https://github.com/antimof/UxPlay) — the AirPlay mirroring core embedded in the `airplaymirror` module.
-- The Pgyer CarLink (`com.ucarhu.carlinkhome`) author authorized use of the `libovmsink.so` video library.
-- [CH341-to-MFI](https://github.com/shilapi/ch341-to-mfi-chip) — the MFi adapter board.
 
 ## License
 

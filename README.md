@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="asset/hplay_small.png" width="180" height="180" alt="Hplay icon" />
+  <img src="asset/logo.png" width="180" height="180" alt="Hplay logo" />
   <h1>Hplay</h1>
   <p><a href="README.md">中文</a> | <a href="README.en.md">English</a></p>
   <p><strong>面向 Android 车机的手机互联接收端（Sink）：CarPlay / CarLife / ICCOA CarLink / AirPlay 屏幕镜像，四协议一个 App。</strong></p>
@@ -99,15 +99,6 @@ Remote MFi 客户端把远程服务当作一块 MFi 芯片远程调用，或采�
 | `POST` | `/mfi/reset` | 请求重置远程 MFi 芯片 | `{}` | `{"detail":""}` |
 
 可选标准 Bearer Authentication 验证。当前仅实测了 BAA Authentication。
-
-## 致谢
-
-- [LIVI](https://github.com/f-io/LIVI) — 本项目的重要参考。
-- [showcase](https://github.com/amineross/showcase) — BAA 认证的重要参考。
-- [UxPlay](https://github.com/antimof/UxPlay) — AirPlay 镜像核心源码（内嵌于
-  `airplaymirror` 模块）。
-- 蒲公英 CarLink（`com.ucarhu.carlinkhome`）作者授权使用其 `libovmsink.so` 视频库。
-- [CH341-to-MFI](https://github.com/shilapi/ch341-to-mfi-chip) — MFi 转接板。
 
 ## 许可证
 
