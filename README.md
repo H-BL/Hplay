@@ -14,8 +14,7 @@ Automotive OS）具备接收手机投屏与互联的能力：
   `/dev/i2c-N` 直连、本地证书/私钥文件，以及 Remote MFi 远程认证（BAA）。
 - **CarLife**：自研车机端协议栈（AOA 传输、帧协议、会话、音视频解码），无需安装
   任何外挂引擎 App。
-- **ICCOA CarLink**：车机端（Sink）原生实现，连接层自研，视频层复用经作者授权的
-  `libovmsink.so`。
+- **ICCOA CarLink**：车机端（Sink）原生实现，连接层自研。
 - **AirPlay 屏幕镜像**：内嵌 AirPlay 接收能力（基于 UxPlay 核心源码），设置中可开关，
   支持系统级悬浮窗与左右分屏（比例可调、左右可换）两种显示方式，可与 CarPlay 同屏共存。
 
@@ -39,7 +38,7 @@ Automotive OS）具备接收手机投屏与互联的能力：
 | `automotive/` | Android Automotive OS 目标 App，支持高级音频通道映射。 |
 | `shared/` | 核心协议与硬件实现：CH341、I2C、MFi、iPhone、iAP2、NCM、VPN、AirPlay、媒体及 Car App Library 代码。 |
 | `carlife/` | 自研 CarLife 车机端协议栈：AOA/USB 传输、帧协议、会话、加密、音视频。 |
-| `carlink/` | ICCOA CarLink 车机端（Sink）：自研连接层（BLE/认证/通道/协议）+ 授权 `libovmsink.so` 视频层。 |
+| `carlink/` | ICCOA CarLink 车机端（Sink）：自研连接层（BLE/认证/通道/协议）。 |
 | `airplaymirror/` | 内嵌 AirPlay 屏幕镜像库模块（C/C++，基于 UxPlay / libplist / OpenSSL 源码构建）。 |
 
 ## 环境要求

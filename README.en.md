@@ -16,8 +16,7 @@ units (including Android Automotive OS):
 - **CarLife**: a self-developed head-unit protocol stack (AOA transport, frame
   protocol, session, audio/video decoding) — no external engine app required.
 - **ICCOA CarLink**: a native head-unit (Sink) implementation with a
-  self-developed connection layer and the author-authorized `libovmsink.so`
-  video layer.
+  self-developed connection layer.
 - **AirPlay screen mirroring**: a built-in AirPlay receiver (based on the UxPlay
   core sources), toggleable in Settings, with a system-level floating window or
   adjustable left/right split-screen display, coexisting with CarPlay.
@@ -46,7 +45,7 @@ credentials, or other non-source files.
 | `automotive/` | Android Automotive OS target with advanced audio channel mapping. |
 | `shared/` | Core protocol and hardware implementations: CH341, I2C, MFi, iPhone, iAP2, NCM, VPN, AirPlay, media, plus Car App Library code. |
 | `carlife/` | Self-developed CarLife head-unit stack: AOA/USB transport, frame protocol, session, crypto, audio/video. |
-| `carlink/` | ICCOA CarLink head-unit (Sink): self-developed connection layer (BLE/auth/channels/protocol) + authorized `libovmsink.so` video layer. |
+| `carlink/` | ICCOA CarLink head-unit (Sink): self-developed connection layer (BLE/auth/channels/protocol). |
 | `airplaymirror/` | Built-in AirPlay screen-mirroring library module (C/C++, built from UxPlay / libplist / OpenSSL sources). |
 
 ## Requirements
